@@ -4,10 +4,14 @@
 Requires that you have the mutagen ID parsing library installed.
 '''
 import doctest
-import mutagen
 import os
 import shutil
 import sys
+
+from mutagen.easyid3 import EasyID3
+
+
+kTargetBasePath = "/Volumes/homes/MusicLibrary"
 
 def Scrub(s):
    '''
@@ -46,20 +50,23 @@ def TargetPath(id3):
    '''
    discNumber = ""
    try:
-      discNumber = id3['discnumber']
-      disc, of = discNumber.split('/')
+      discNum = id3['discnumber'][0]
+      print "Disc # = %s" % discNum
+      disc, of = discNum.split('/')
+      print "Disc %s of %s" % (disc, of)
       if disc != of:
          discNumber = " (disc %s)" % disc
    except KeyError:
+      print "!!! EXCEPTION !!!"
       pass
 
    try:
-      id3["album"]
+      album = id3["album"][0]
    except KeyError:
-      id3["album"] = "(no album)"
+      album = "(no album)"
 
    id3["discNumber"] = discNumber
-   return os.path.join(Scrub(id3["artist"]), Scrub("%(album)s%(discNumber)s" % id3))
+   return os.path.join(Scrub(id3["artist"][0]), Scrub("%s%s" % (album, discNumber)))
 
 def Filename(id3):
    '''
@@ -81,14 +88,31 @@ def Filename(id3):
 
    '''
    try:
-      trackNum = id3['tracknumber']
+      trackNum = id3['tracknumber'][0]
       # Amazon track numbers are sometimes in the form 'x/y')
       trackNum = trackNum.split('/')[0]
       trackNum = "%02d-" % int(trackNum)
    except (KeyError, ValueError):
       trackNum = ""
 
-   return "%s%s" % (trackNum, Scrub(id3['title']))
+   return "%s%s" % (trackNum, Scrub(id3['title'][0]))
+
+
+def FullTargetPath(f):
+   '''
+      @param f path/name of the file we want to rename and move. The output of
+      this function is the complete path and filename of the destination.
+      >>> kTargetBasePath = "/foo/"
+   '''
+
+   extension = os.path.splitext(f)[1]
+   meta = EasyID3(f)
+   filename = Filename(meta) + extension
+
+   return os.path.join(kTargetBasePath, TargetPath(meta), filename)
+
+
+   
 
 
 
