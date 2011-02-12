@@ -54,7 +54,7 @@ def TargetPath(id3):
       print "Disc # = %s" % discNum
       disc, of = discNum.split('/')
       print "Disc %s of %s" % (disc, of)
-      if disc != of:
+      if of != "1":
          discNumber = " (disc %s)" % disc
    except KeyError:
       print "!!! EXCEPTION !!!"
