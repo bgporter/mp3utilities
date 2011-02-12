@@ -13,6 +13,11 @@ from mutagen.easyid3 import EasyID3
 
 kTargetBasePath = "/Volumes/homes/MusicLibrary"
 
+def DebugLog(src, dest):
+   print "->%s\n<-%s\n" % (src, dest)
+   
+ops = {'debug' : DebugLog, 'move' : shutil.move, 'copy': shutil.copyfile }
+
 def Scrub(s):
    '''
       Remove any characters that we don't want in filenames or paths from a
@@ -41,6 +46,7 @@ def TargetPath(id3):
       or
       Artist/Album (disc #)
 
+      >>> kTargetBasePath = ''
       >>> d1 = {'album' : 'Low Electrical Worker', 'artist': 'Kneebody'}
       >>> TargetPath(d1)
       'Kneebody/Low Electrical Worker'
@@ -51,9 +57,7 @@ def TargetPath(id3):
    discNumber = ""
    try:
       discNum = id3['discnumber'][0]
-      print "Disc # = %s" % discNum
       disc, of = discNum.split('/')
-      print "Disc %s of %s" % (disc, of)
       if of != "1":
          discNumber = " (disc %s)" % disc
    except KeyError:
@@ -66,7 +70,7 @@ def TargetPath(id3):
       album = "(no album)"
 
    id3["discNumber"] = discNumber
-   return os.path.join(Scrub(id3["artist"][0]), Scrub("%s%s" % (album, discNumber)))
+   return os.path.join(kTargetBasePath, Scrub(id3["artist"][0]), Scrub("%s%s" % (album, discNumber)))
 
 def Filename(id3):
    '''
@@ -109,10 +113,50 @@ def FullTargetPath(f):
    meta = EasyID3(f)
    filename = Filename(meta) + extension
 
-   return os.path.join(kTargetBasePath, TargetPath(meta), filename)
+   return os.path.join(TargetPath(meta), filename)
 
 
-   
+def DupeFile(src, dest, mode="copy"):
+   '''
+      create a copy of the file in the correct location (unless there's
+      already one there!). Mode is one of:
+      - "move"
+      - "copy"
+      - "debug" (just print the two files)
+   '''
+   if not os.path.exists(dest):
+      ops[mode](src, dest)
+   else:
+      print "ERROR -- file `%s' already exists."
+
+def HandleDir(root, files, mode="copy"):
+   '''
+      Operate on the files in a given directory. 
+      root = the directory 
+      files = list of files in the directory
+      mode = move/copy/debug
+   '''
+   outputPath = ""
+   others = []
+   for f in files:
+      base, ext = os.path.splitext(f)
+      path = os.path.join(root, f)
+      if ext.lower() in (".mp3",):
+         dest = FullTargetPath(path)
+         DupeFile(path, dest, mode)
+         if not outputPath:
+            outputPath = os.path.split(FullTargetPath(path))[0]
+      else:
+         # remember this file & move it later.
+         others.append(f)
+   # if there were any image files, etc, don't forget them!
+   for f in others:
+      base, ext = os.path.splitext(f)
+      if ext.lower() in ('.jpg', '.gif', '.png', '.txt'):
+         dest = os.path.join(outputPath, f)
+         src = os.path.join(root, f)
+         DupeFile(src, dest, mode)
+
 
 
 
@@ -121,4 +165,15 @@ if __name__ == "__main__":
       print "TESTING..." 
       doctest.testmod()
       print "DONE."
+   else:
+      try:
+         top = sys.argv[1]
+      except IndexError:
+         top = os.getcwd()
+      for root, dirs, files in os.walk(top):
+         HandleDir(root, files, "debug")
+
+
+
+
 
