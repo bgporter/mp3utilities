@@ -8,13 +8,20 @@ import os
 import shutil
 import sys
 
+import mutagen
 from mutagen.easyid3 import EasyID3
 
 
 kTargetBasePath = "/Volumes/homes/MusicLibrary"
+kTargetBasePath = "/foo/"
+
+class MetadataException(Exception):
+   pass
 
 def DebugLog(src, dest):
-   print "->%s\n<-%s\n" % (src, dest)
+   print src
+   print dest.encode("utf-8")
+   print 
    
 ops = {'debug' : DebugLog, 'move' : shutil.move, 'copy': shutil.copyfile }
 
@@ -28,10 +35,13 @@ def Scrub(s):
       'this should be shorter'
 
    '''
-   kIllegals = ":/\\?<>"
-   for c in kIllegals:
-      s = s.replace(c, "")
-   return s
+   kIllegals = u":/\\?<>"
+   try:
+      for c in kIllegals:
+         s = s.replace(c, u"")
+      return s
+   except UnicodeDecodeError, e:
+      return Scrub(s.decode("utf-8"))
 
 
 
@@ -46,72 +56,81 @@ def TargetPath(id3):
       or
       Artist/Album (disc #)
 
-      >>> kTargetBasePath = ''
-      >>> d1 = {'album' : 'Low Electrical Worker', 'artist': 'Kneebody'}
+      >>> kTargetBasePath = u''
+      >>> kTargetBasePath
+      u''
+      >>> d1 = {'album' : [u'Low Electrical Worker'], 'artist': [u'Kneebody']}
       >>> TargetPath(d1)
-      'Kneebody/Low Electrical Worker'
-      >>> d1['discnumber'] = '2/3'
+      u'Kneebody/Low Electrical Worker'
+      >>> d1['discnumber'] = [u'2/3']
       >>> TargetPath(d1)
-      'Kneebody/Low Electrical Worker (disc 2)'
+      u'Kneebody/Low Electrical Worker (disc 2)'
    '''
-   discNumber = ""
+   discNumber = u""
    try:
       discNum = id3['discnumber'][0]
       disc, of = discNum.split('/')
       if of != "1":
-         discNumber = " (disc %s)" % disc
-   except KeyError:
-      print "!!! EXCEPTION !!!"
+         discNumber = u" (disc %s)" % disc
+   except (ValueError, KeyError):
+      # ignore the error
       pass
+
+   try:
+      artist = Scrub(id3["artist"][0])
+   except KeyError:
+      artist = u"unknown artist"
 
    try:
       album = id3["album"][0]
    except KeyError:
-      album = "(no album)"
+      album = u"unknown album"
 
-   id3["discNumber"] = discNumber
-   return os.path.join(kTargetBasePath, Scrub(id3["artist"][0]), Scrub("%s%s" % (album, discNumber)))
+   return os.path.join(kTargetBasePath, artist, Scrub(u"%s%s" % (album, discNumber)))
 
-def Filename(id3):
+def Filename(id3, base):
    '''
       Constructs a filename (without extension) from the provided ID3
       metadata.
 
       Format: <trackNo>-<title>
-      >>> d1 = { 'tracknumber': '1', 'title' : "Teddy Ruxpin"}
+      >>> d1 = { 'tracknumber': [u'1'], 'title' : [u"Teddy Ruxpin"]}
       >>> Filename(d1)
-      '01-Teddy Ruxpin'
-      >>> d1['tracknumber'] = '2/3'
+      u'01-Teddy Ruxpin'
+      >>> d1['tracknumber'] = [u'2/3']
       >>> Filename(d1)
-      '02-Teddy Ruxpin'
+      u'02-Teddy Ruxpin'
       >>> del d1['tracknumber']
       >>> Filename(d1)
-      'Teddy Ruxpin'
-
-
-
+      u'Teddy Ruxpin'
    '''
    try:
       trackNum = id3['tracknumber'][0]
       # Amazon track numbers are sometimes in the form 'x/y')
       trackNum = trackNum.split('/')[0]
-      trackNum = "%02d-" % int(trackNum)
+      trackNum = u"%02d-" % int(trackNum)
    except (KeyError, ValueError):
-      trackNum = ""
+      trackNum = u""
 
-   return "%s%s" % (trackNum, Scrub(id3['title'][0]))
+   try:
+      return u"%s%s" % (trackNum, Scrub(id3['title'][0]))
+   except KeyError:
+      print "base = ", base
+      return u"%s%s" % (trackNum, Scrub(base))
 
 
-def FullTargetPath(f):
+def FullTargetPath(f, base, extension):
    '''
       @param f path/name of the file we want to rename and move. The output of
       this function is the complete path and filename of the destination.
       >>> kTargetBasePath = "/foo/"
    '''
 
-   extension = os.path.splitext(f)[1]
-   meta = EasyID3(f)
-   filename = Filename(meta) + extension
+   try:
+      meta = EasyID3(f)
+   except mutagen.id3.ID3NoHeaderError:
+      meta = {}
+   filename = Filename(meta, base) + extension
 
    return os.path.join(TargetPath(meta), filename)
 
@@ -127,7 +146,7 @@ def DupeFile(src, dest, mode="copy"):
    if not os.path.exists(dest):
       ops[mode](src, dest)
    else:
-      print "ERROR -- file `%s' already exists."
+      print "ERROR -- file `%s' already exists." % dest
 
 def HandleDir(root, files, mode="copy"):
    '''
@@ -136,16 +155,21 @@ def HandleDir(root, files, mode="copy"):
       files = list of files in the directory
       mode = move/copy/debug
    '''
-   outputPath = ""
+   print "Handling directory '%s'" % root
+   outputPath = u""
    others = []
    for f in files:
       base, ext = os.path.splitext(f)
       path = os.path.join(root, f)
-      if ext.lower() in (".mp3",):
-         dest = FullTargetPath(path)
-         DupeFile(path, dest, mode)
-         if not outputPath:
-            outputPath = os.path.split(FullTargetPath(path))[0]
+      if ext.lower() in (u".mp3",):
+         print path
+         try:
+            dest = FullTargetPath(path, base, ext)
+            DupeFile(path, dest, mode)
+            if not outputPath:
+               outputPath = os.path.split(dest)[0]
+         except MetadataException, e:
+            sys.stderr.write("Unable to handle %s: %s\n" % (path, str(e)))
       else:
          # remember this file & move it later.
          others.append(f)
