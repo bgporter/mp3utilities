@@ -172,7 +172,6 @@ def HandleDir(root, files, mode="copy"):
       base, ext = os.path.splitext(f)
       path = os.path.join(root, f)
       if ext.lower() in (u".mp3",):
-         print path
          try:
             dest = FullTargetPath(path, base, ext)
             DupeFile(path, dest, mode)
@@ -195,17 +194,30 @@ def HandleDir(root, files, mode="copy"):
 
 
 if __name__ == "__main__":
-   if len(sys.argv) >= 2 and sys.argv[1] == "-t":
-      print "TESTING..." 
-      doctest.testmod()
-      print "DONE."
-   else:
-      try:
-         top = sys.argv[1]
-      except IndexError:
-         top = os.getcwd()
-      for root, dirs, files in os.walk(top):
-         HandleDir(root, files, "copy")
+   # TODO:
+   # - add real arg parsing
+   # - test file moving
+   import argparse
+   parser = argparse.ArgumentParser("Move and rename MP3 files.")
+   parser.add_argument("-t", "--test", action='store_true', 
+    help ="run unit tests")
+   args = parser.parse_args()
+   print args
+
+
+
+
+   #if len(sys.argv) >= 2 and sys.argv[1] == "-t":
+   #   print "TESTING..." 
+   #   doctest.testmod()
+   #   print "DONE."
+   #else:
+   #   try:
+   #      top = sys.argv[1]
+   #   except IndexError:
+   #      top = os.getcwd()
+   #   for root, dirs, files in os.walk(top):
+   #      HandleDir(root, files, "copy")
 
 
 
