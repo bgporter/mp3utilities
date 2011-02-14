@@ -12,8 +12,7 @@ import mutagen
 from mutagen.easyid3 import EasyID3
 
 
-kTargetBasePath = "/Volumes/homes/MusicLibrary"
-kTargetBasePath = "/foo/"
+kTargetBasePath = "/Volumes/homes/temp/music"
 
 class MetadataException(Exception):
    pass
@@ -22,8 +21,19 @@ def DebugLog(src, dest):
    print src
    print dest.encode("utf-8")
    print 
+
+def CopyFile(src, dest):
+   try:
+      targetPath = os.path.split(dest)[0]
+      os.makedirs(targetPath)
+   except OSError:
+       # dir already there or can't be created -- if it can't be created, then
+       # the next call will also fail.
+       pass
+   DebugLog(src, dest)
+   shutil.copyfile(src, dest)
    
-ops = {'debug' : DebugLog, 'move' : shutil.move, 'copy': shutil.copyfile }
+ops = {'debug' : DebugLog, 'move' : shutil.move, 'copy': CopyFile }
 
 def Scrub(s):
    '''
@@ -195,7 +205,7 @@ if __name__ == "__main__":
       except IndexError:
          top = os.getcwd()
       for root, dirs, files in os.walk(top):
-         HandleDir(root, files, "debug")
+         HandleDir(root, files, "copy")
 
 
 
