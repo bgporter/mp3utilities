@@ -39,10 +39,10 @@ def Scrub(s):
    '''
       Remove any characters that we don't want in filenames or paths from a
       string.
-      >>> Scrub("No Illegal characters")
-      'No Illegal characters'
-      >>> Scrub("this: <should> /be\\ shorter?")
-      'this should be shorter'
+      >>> Scrub(u"No Illegal characters")
+      u'No Illegal characters'
+      >>> Scrub(u"this: <should> /be\\ shorter?")
+      u'this should be shorter'
 
    '''
    kIllegals = u":/\\?<>"
@@ -66,9 +66,8 @@ def TargetPath(destPath, id3):
       or
       Artist/Album (disc #)
 
-      u''
       >>> d1 = {'album' : [u'Low Electrical Worker'], 'artist': [u'Kneebody']}
-      >>> TargetPath(d1)
+      >>> TargetPath(u'', d1)
       u'Kneebody/Low Electrical Worker'
       >>> d1['discnumber'] = [u'2/3']
       >>> TargetPath(u'', d1)
@@ -103,13 +102,13 @@ def Filename(id3, base):
 
       Format: <trackNo>-<title>
       >>> d1 = { 'tracknumber': [u'1'], 'title' : [u"Teddy Ruxpin"]}
-      >>> Filename(d1)
+      >>> Filename(d1, u"")
       u'01-Teddy Ruxpin'
       >>> d1['tracknumber'] = [u'2/3']
-      >>> Filename(d1)
+      >>> Filename(d1, u"")
       u'02-Teddy Ruxpin'
       >>> del d1['tracknumber']
-      >>> Filename(d1)
+      >>> Filename(d1, u"")
       u'Teddy Ruxpin'
    '''
    try:
@@ -208,7 +207,6 @@ if __name__ == "__main__":
       help = "Move/copy/debug")
 
    args = parser.parse_args()
-   print args
 
    if args.test:
       import doctest
