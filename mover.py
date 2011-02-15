@@ -55,7 +55,7 @@ def Scrub(s):
 
 
 
-def TargetPath(id3):
+def TargetPath(destPath, id3):
    '''
       @param id3 Dict containing track metadata that we use to generate the
       target path that can elsewhere be appended to the base path for our file
@@ -66,14 +66,12 @@ def TargetPath(id3):
       or
       Artist/Album (disc #)
 
-      >>> kTargetBasePath = u''
-      >>> kTargetBasePath
       u''
       >>> d1 = {'album' : [u'Low Electrical Worker'], 'artist': [u'Kneebody']}
       >>> TargetPath(d1)
       u'Kneebody/Low Electrical Worker'
       >>> d1['discnumber'] = [u'2/3']
-      >>> TargetPath(d1)
+      >>> TargetPath(u'', d1)
       u'Kneebody/Low Electrical Worker (disc 2)'
    '''
    discNumber = u""
@@ -96,7 +94,7 @@ def TargetPath(id3):
    except KeyError:
       album = u"unknown album"
 
-   return os.path.join(kTargetBasePath, artist, Scrub(u"%s%s" % (album, discNumber)))
+   return os.path.join(destPath, artist, Scrub(u"%s%s" % (album, discNumber)))
 
 def Filename(id3, base):
    '''
@@ -129,7 +127,7 @@ def Filename(id3, base):
       return u"%s%s" % (trackNum, Scrub(base))
 
 
-def FullTargetPath(f, base, extension):
+def FullTargetPath(destPath, f, base, extension):
    '''
       @param f path/name of the file we want to rename and move. The output of
       this function is the complete path and filename of the destination.
@@ -142,7 +140,7 @@ def FullTargetPath(f, base, extension):
       meta = {}
    filename = Filename(meta, base) + extension
 
-   return os.path.join(TargetPath(meta), filename)
+   return os.path.join(TargetPath(destPath, meta), filename)
 
 
 def DupeFile(src, dest, mode="copy"):
@@ -158,7 +156,7 @@ def DupeFile(src, dest, mode="copy"):
    else:
       print "ERROR -- file `%s' already exists." % dest
 
-def HandleDir(root, files, mode="copy"):
+def HandleDir(root, files, destPath, mode="copy"):
    '''
       Operate on the files in a given directory. 
       root = the directory 
@@ -170,13 +168,13 @@ def HandleDir(root, files, mode="copy"):
    others = []
    for f in files:
       base, ext = os.path.splitext(f)
-      path = os.path.join(root, f)
+      srcFile = os.path.join(root, f)
       if ext.lower() in (u".mp3",):
          try:
-            dest = FullTargetPath(path, base, ext)
-            DupeFile(path, dest, mode)
+            destFile = FullTargetPath(destPath, srcFile, base, ext)
+            DupeFile(srcFile, destFile, mode)
             if not outputPath:
-               outputPath = os.path.split(dest)[0]
+               outputPath = os.path.split(destFile)[0]
          except MetadataException, e:
             sys.stderr.write("Unable to handle %s: %s\n" % (path, str(e)))
       else:
@@ -200,24 +198,26 @@ if __name__ == "__main__":
    import argparse
    parser = argparse.ArgumentParser("Move and rename MP3 files.")
    parser.add_argument("-t", "--test", action='store_true', 
-    help ="run unit tests")
+      help ="run unit tests")
+   parser.add_argument("-s", "--src", action="store", nargs="?",
+      default=os.getcwd(), help="Source directory containing mp3 files")
+   parser.add_argument("-d", "--dest", action="store", nargs="?",
+      default=kTargetBasePath, help="Destination directory for mp3 files")
+   parser.add_argument("-m", "--mode", action="store", nargs="?",
+      default = "copy", choices=["debug", "copy", "move"], 
+      help = "Move/copy/debug")
+
    args = parser.parse_args()
    print args
 
+   if args.test:
+      import doctest
+      doctest.testmod()
+   else:
+      for root, dirs, files in os.walk(args.src):
+         HandleDir(root, files, args.dest, args.mode)
+   print "Done."         
 
-
-
-   #if len(sys.argv) >= 2 and sys.argv[1] == "-t":
-   #   print "TESTING..." 
-   #   doctest.testmod()
-   #   print "DONE."
-   #else:
-   #   try:
-   #      top = sys.argv[1]
-   #   except IndexError:
-   #      top = os.getcwd()
-   #   for root, dirs, files in os.walk(top):
-   #      HandleDir(root, files, "copy")
 
 
 
