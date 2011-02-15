@@ -1,4 +1,4 @@
-#! /usr/bin/bash
+#! /usr/bin/env python
 
 ''' Utility to move and rename MP3 files into a master repository location.
 Requires that you have the mutagen ID parsing library installed.
