@@ -4,6 +4,7 @@
 Requires that you have the mutagen ID parsing library installed.
 '''
 import doctest
+import errno
 import os
 import shutil
 import sys
@@ -22,18 +23,32 @@ def DebugLog(src, dest):
    print dest.encode("utf-8")
    print 
 
-def CopyFile(src, dest):
+def PrepFile(src, dest):
+   ''' create the directories needed for our copy or move. The attempt to
+   create the directory may fail either because it already exists (not really
+   an error), or because we were unable to create it for some other reason
+   (drive not mounted, permissions, etc. If we try this and get an OSError
+   with an errno value of errno.EEXIST, we wallow the exception and proceed,
+   otherwise we re-raise the exception.
+   '''
    try:
       targetPath = os.path.split(dest)[0]
       os.makedirs(targetPath)
-   except OSError:
-       # dir already there or can't be created -- if it can't be created, then
-       # the next call will also fail.
-       pass
-   DebugLog(src, dest)
+      DebugLog(src, dest)
+   except OSError, e:
+      if e.errno != errno.EEXIST:
+         raise
+
+
+def CopyFile(src, dest):
+   PrepFile(src, dest)
    shutil.copyfile(src, dest)
+
+def MoveFile(src, dest):
+   PrepFile(src, dest)
+   shutil.move(src, dest)
    
-ops = {'debug' : DebugLog, 'move' : shutil.move, 'copy': CopyFile }
+ops = {'debug' : DebugLog, 'move' : MoveFile, 'copy': CopyFile }
 
 def Scrub(s):
    '''
@@ -171,7 +186,12 @@ def HandleDir(root, files, destPath, mode="copy"):
       if ext.lower() in (u".mp3",):
          try:
             destFile = FullTargetPath(destPath, srcFile, base, ext)
-            DupeFile(srcFile, destFile, mode)
+            try:
+               DupeFile(srcFile, destFile, mode)
+            except OSError, e:
+               # can't generate the output file -- print the reason and exit
+               # the app.
+               sys.exit("ERROR (%d): %s - %s" % (e.errno, e.strerror, e.filename))
             if not outputPath:
                outputPath = os.path.split(destFile)[0]
          except MetadataException, e:
