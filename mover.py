@@ -5,6 +5,7 @@ Requires that you have the mutagen ID parsing library installed.
 '''
 import doctest
 import errno
+import hashlib
 import os
 import shutil
 import sys
@@ -156,6 +157,23 @@ def FullTargetPath(destPath, f, base, extension):
 
    return os.path.join(TargetPath(destPath, meta), filename)
 
+def CompareFiles(src, dest, mode):
+   ''' it may be that there's another file present with the same name at the
+      destination, but we still want to replace it -- maybe it's a lousy old 
+      low bitrate version. We'll compare hashes first; if it's an exact dupe,
+      there's nothing to do. If they are different, we should let the user
+      decide what to do (replace the current dest, or keep it)
+   '''
+   srcMd5 = hashlib.md5()
+   destMd5 = hashlib.md5()
+   print ("...comparing possible duplicate files")
+   srcMd5.update(open(src, "rb").read())
+   destMd5.update(open(dest, "rb").read())
+   if srcMd5.digest() != destMd5.digest():
+      print "ERROR: dest file already exists, and is different."
+
+
+
 
 def DupeFile(src, dest, mode="copy"):
    '''
@@ -168,7 +186,7 @@ def DupeFile(src, dest, mode="copy"):
    if not os.path.exists(dest):
       ops[mode](src, dest)
    else:
-      print "ERROR -- file `%s' already exists." % dest
+      CompareFiles(src, dest, mode)
 
 def HandleDir(root, files, destPath, mode="copy"):
    '''
