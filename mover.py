@@ -33,10 +33,10 @@ def PrepFile(src, dest):
    with an errno value of errno.EEXIST, we wallow the exception and proceed,
    otherwise we re-raise the exception.
    '''
+   DebugLog(src, dest)
+   targetPath = os.path.split(dest)[0]
    try:
-      targetPath = os.path.split(dest)[0]
       os.makedirs(targetPath)
-      DebugLog(src, dest)
    except OSError, e:
       if e.errno != errno.EEXIST:
          raise
@@ -210,7 +210,6 @@ def DupeFile(src, dest, mode, force=False):
       - "debug" (just print the two files)
    '''
    exists = os.path.exists(dest)
-   print "%s %s" % (dest, ": EXISTS" if exists else "")
    if force or not exists:
       ops[mode](src, dest)
    else:
@@ -257,9 +256,6 @@ def HandleDir(root, files, destPath, mode="copy"):
 
 
 if __name__ == "__main__":
-   # TODO:
-   # - add real arg parsing
-   # - test file moving
    import argparse
    parser = argparse.ArgumentParser("Move and rename MP3 files.")
    parser.add_argument("-t", "--test", action='store_true', 
