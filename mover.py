@@ -12,6 +12,7 @@ import sys
 
 import mutagen
 from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
 
 
 kTargetBasePath = "/Volumes/homes/temp/music"
@@ -157,6 +158,18 @@ def FullTargetPath(destPath, f, base, extension):
 
    return os.path.join(TargetPath(destPath, meta), filename)
 
+
+def TrackInfo(mp3File):
+   id3Data = EasyID3(mp3File)
+   mp3Data = MP3(mp3File)
+   for attr in ('title', 'artist', 'album'):
+      print "   %s: %s" % (attr, id3Data[attr][0])
+   print "   bitrate: %d" % (int(mp3Data.info.bitrate) / 1000)
+   duration = int(mp3Data.info.length + 0.5)
+   print "   duration: %d:%d" % (duration / 60, duration % 60)
+   print
+
+
 def CompareFiles(src, dest, mode):
    ''' it may be that there's another file present with the same name at the
       destination, but we still want to replace it -- maybe it's a lousy old 
@@ -170,12 +183,25 @@ def CompareFiles(src, dest, mode):
    srcMd5.update(open(src, "rb").read())
    destMd5.update(open(dest, "rb").read())
    if srcMd5.digest() != destMd5.digest():
-      print "ERROR: dest file already exists, and is different."
+      print "Destination file already exists, and is different."
+      if os.path.splitext(dest)[1] in (".mp3",):
+         print "Existing file:"
+         TrackInfo(dest)
+         print "New file:"
+         TrackInfo(src)
+
+      while 1:
+         s = raw_input("[k]eep existing file, or [r]eplace?")
+         s = s.lower()[0]
+         if s in ('k', 'r'):
+            if s == 'r':
+               DupeFile(src, dest, mode, True)
+            break
 
 
 
 
-def DupeFile(src, dest, mode="copy"):
+def DupeFile(src, dest, mode, force=False):
    '''
       create a copy of the file in the correct location (unless there's
       already one there!). Mode is one of:
@@ -183,7 +209,9 @@ def DupeFile(src, dest, mode="copy"):
       - "copy"
       - "debug" (just print the two files)
    '''
-   if not os.path.exists(dest):
+   exists = os.path.exists(dest)
+   print "%s %s" % (dest, ": EXISTS" if exists else "")
+   if force or not exists:
       ops[mode](src, dest)
    else:
       CompareFiles(src, dest, mode)
