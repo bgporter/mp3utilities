@@ -93,9 +93,9 @@ def TargetPath(destPath, id3):
    discNumber = u""
    try:
       discNum = id3['discnumber'][0]
-      disc, of = discNum.split('/')
-      if of != "1":
-         discNumber = u" (disc %s)" % disc
+      disc, of = map(int, discNum.split('/'))
+      if disc > 0 and of > 1:
+         discNumber = u" (disc %d)" % disc
    except (ValueError, KeyError):
       # ignore the error
       pass
