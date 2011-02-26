@@ -13,6 +13,12 @@ import sys
 import mutagen
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
+try:
+   from titlecase import titlecase
+except ImportError:
+   def titlecase(s): return s
+
+
 
 
 kTargetBasePath = "/Volumes/homes/temp/music"
@@ -54,7 +60,8 @@ ops = {'debug' : DebugLog, 'move' : MoveFile, 'copy': CopyFile }
 
 def Scrub(s):
    '''
-      Remove any characters that we don't want in filenames or paths from a
+      1. convert the string into titlecase
+      2. Remove any characters that we don't want in filenames or paths from a
       string.
       >>> Scrub(u"No Illegal characters")
       u'No Illegal characters'
@@ -62,6 +69,8 @@ def Scrub(s):
       u'this should be shorter'
 
    '''
+   s = titlecase(s)
+
    kIllegals = u":/\\?<>"
    try:
       for c in kIllegals:
@@ -159,7 +168,7 @@ def FullTargetPath(destPath, f, base, extension):
    return os.path.join(TargetPath(destPath, meta), filename)
 
 
-def TrackInfo(mp3File):
+def TrackInfo(mp3File, md5):
    id3Data = EasyID3(mp3File)
    mp3Data = MP3(mp3File)
    for attr in ('title', 'artist', 'album'):
@@ -167,6 +176,7 @@ def TrackInfo(mp3File):
    print "   bitrate: %d" % (int(mp3Data.info.bitrate) / 1000)
    duration = int(mp3Data.info.length + 0.5)
    print "   duration: %d:%d" % (duration / 60, duration % 60)
+   print "   MD5: %s" % md5
    print
 
 
@@ -186,9 +196,9 @@ def CompareFiles(src, dest, mode):
       print "Destination file already exists, and is different."
       if os.path.splitext(dest)[1] in (".mp3",):
          print "Existing file:"
-         TrackInfo(dest)
+         TrackInfo(dest, destMd5.hexdigest())
          print "New file:"
-         TrackInfo(src)
+         TrackInfo(src, srcMd5.hexdigest())
 
       while 1:
          s = raw_input("[k]eep existing file, or [r]eplace?")
@@ -215,7 +225,7 @@ def DupeFile(src, dest, mode, force=False):
    else:
       CompareFiles(src, dest, mode)
 
-def HandleDir(root, files, destPath, mode="copy"):
+def HandleDir(root, files, destPath, mode="copy", force=False):
    '''
       Operate on the files in a given directory. 
       root = the directory 
@@ -232,7 +242,7 @@ def HandleDir(root, files, destPath, mode="copy"):
          try:
             destFile = FullTargetPath(destPath, srcFile, base, ext)
             try:
-               DupeFile(srcFile, destFile, mode)
+               DupeFile(srcFile, destFile, mode, force)
             except OSError, e:
                # can't generate the output file -- print the reason and exit
                # the app.
@@ -250,7 +260,7 @@ def HandleDir(root, files, destPath, mode="copy"):
       if ext.lower() in ('.jpg', '.gif', '.png', '.txt'):
          dest = os.path.join(outputPath, f)
          src = os.path.join(root, f)
-         DupeFile(src, dest, mode)
+         DupeFile(src, dest, mode, force)
 
 
 
@@ -260,6 +270,8 @@ if __name__ == "__main__":
    parser = argparse.ArgumentParser("Move and rename MP3 files.")
    parser.add_argument("-t", "--test", action='store_true', 
       help ="run unit tests")
+   parser.add_argument("-f", "--force", action='store_true', 
+      help="force a copy/move when duplicate files are found at the destination")
    parser.add_argument("-s", "--src", action="store", nargs="?",
       default=os.getcwd(), help="Source directory containing mp3 files")
    parser.add_argument("-d", "--dest", action="store", nargs="?",
@@ -275,7 +287,7 @@ if __name__ == "__main__":
       doctest.testmod()
    else:
       for root, dirs, files in os.walk(args.src):
-         HandleDir(root, files, args.dest, args.mode)
+         HandleDir(root, files, args.dest, args.mode, args.force)
    print "Done."         
 
 
