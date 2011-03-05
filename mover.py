@@ -21,7 +21,7 @@ except ImportError:
 
 
 
-kTargetBasePath = "/Volumes/homes/temp/music"
+kTargetBasePath = "/Volumes/homes/Audio"
 
 class MetadataException(Exception):
    pass
@@ -74,7 +74,7 @@ def Scrub(s):
    kIllegals = u":/\\?<>"
    try:
       for c in kIllegals:
-         s = s.replace(c, u"")
+         s = s.replace(c, u" ")
       return s
    except UnicodeDecodeError, e:
       return Scrub(s.decode("utf-8"))
@@ -112,7 +112,25 @@ def TargetPath(destPath, id3):
    try:
       artist = Scrub(id3["artist"][0])
    except KeyError:
-      artist = u"unknown artist"
+      artist = ''
+
+   try:
+      performer = Scrub(id3['performer'][0])
+   except KeyError:
+      performer = ''
+
+   # if both artist and performer are defined, use whichever one is shorter.
+   if artist:
+      if performer:
+         if len(artist) > len(performer):
+            artist = performer
+   else:
+      if performer:
+         artist = performer
+      else:
+         artist = u"unknown artist"
+
+
 
    try:
       album = id3["album"][0]

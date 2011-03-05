@@ -58,11 +58,11 @@ def CheckFile(filePath):
          f.save()
 
 
-letters =[ "unknown album" ]
+letters =[ "music" ]
 
 for letter in letters:
    print "Processing '%s' files" % letter
-   for f in glob.glob("/Volumes/HOMES/temp/music/unknown artist/%s/*.mp3" % letter):
+   for f in glob.glob("/Users/bgporter/temp/%s/*.mp3" % letter):
       try:
          CheckFile(f)
       except urllib2.HTTPError, e:
