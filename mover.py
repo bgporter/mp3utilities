@@ -4,6 +4,7 @@
 Requires that you have the mutagen ID parsing library installed.
 '''
 import doctest
+import re
 import errno
 import hashlib
 import os
@@ -60,21 +61,29 @@ ops = {'debug' : DebugLog, 'move' : MoveFile, 'copy': CopyFile }
 
 def Scrub(s):
    '''
-      1. convert the string into titlecase
+      1. convert the string into lowercase & strip outer whitespace
       2. Remove any characters that we don't want in filenames or paths from a
-      string.
+      string, eliminating multiple whitespace chars within
+      3. Replace whitespace with '-'
       >>> Scrub(u"No Illegal characters")
-      u'No Illegal characters'
+      u'no-illegal-characters'
       >>> Scrub(u"this: <should> /be\\ shorter?")
-      u'this should be shorter'
+      u'this-should-be-shorter'
 
    '''
-   s = titlecase(s)
+   s = s.lower()
 
    kIllegals = u":/\\?<>"
    try:
       for c in kIllegals:
          s = s.replace(c, u" ")
+      # replace multiple whitespace chars with a single space
+      s = re.sub("\s+", u" ", s)
+      # get rid of any whitespace on the outside
+      s = s.strip()
+      # replace each space w a dash
+      s = s.replace(u' ', u'-')
+
       return s
    except UnicodeDecodeError, e:
       return Scrub(s.decode("utf-8"))
@@ -94,17 +103,17 @@ def TargetPath(destPath, id3):
 
       >>> d1 = {'album' : [u'Low Electrical Worker'], 'artist': [u'Kneebody']}
       >>> TargetPath(u'', d1)
-      u'Kneebody/Low Electrical Worker'
+      u'kneebody/low-electrical-worker'
       >>> d1['discnumber'] = [u'2/3']
       >>> TargetPath(u'', d1)
-      u'Kneebody/Low Electrical Worker (disc 2)'
+      u'kneebody/low-electrical-worker_(disc_2)'
    '''
    discNumber = u""
    try:
       discNum = id3['discnumber'][0]
       disc, of = map(int, discNum.split('/'))
       if disc > 0 and of > 1:
-         discNumber = u" (disc %d)" % disc
+         discNumber = u"_(disc_%d)" % disc
    except (ValueError, KeyError):
       # ignore the error
       pass
@@ -128,14 +137,14 @@ def TargetPath(destPath, id3):
       if performer:
          artist = performer
       else:
-         artist = u"unknown artist"
+         artist = u"unknown-artist"
 
 
 
    try:
       album = id3["album"][0]
    except KeyError:
-      album = u"unknown album"
+      album = u"unknown-album"
 
    return os.path.join(destPath, artist, Scrub(u"%s%s" % (album, discNumber)))
 
@@ -147,19 +156,19 @@ def Filename(id3, base):
       Format: <trackNo>-<title>
       >>> d1 = { 'tracknumber': [u'1'], 'title' : [u"Teddy Ruxpin"]}
       >>> Filename(d1, u"")
-      u'01-Teddy Ruxpin'
+      u'01_teddy-ruxpin'
       >>> d1['tracknumber'] = [u'2/3']
       >>> Filename(d1, u"")
-      u'02-Teddy Ruxpin'
+      u'02_teddy-ruxpin'
       >>> del d1['tracknumber']
       >>> Filename(d1, u"")
-      u'Teddy Ruxpin'
+      u'teddy-ruxpin'
    '''
    try:
       trackNum = id3['tracknumber'][0]
       # Amazon track numbers are sometimes in the form 'x/y')
       trackNum = trackNum.split('/')[0]
-      trackNum = u"%02d-" % int(trackNum)
+      trackNum = u"%02d_" % int(trackNum)
    except (KeyError, ValueError):
       trackNum = u""
 
