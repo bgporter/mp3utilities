@@ -71,7 +71,7 @@ def Scrub(s):
       u'this-should-be-shorter'
 
    '''
-   s = s.lower()
+   #s = s.lower()
 
    kIllegals = u":/\\?<>"
    try:
