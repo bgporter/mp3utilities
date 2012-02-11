@@ -62,7 +62,8 @@ letters =[ "music" ]
 
 for letter in letters:
    print "Processing '%s' files" % letter
-   for f in glob.glob("/Users/bgporter/temp/%s/*.mp3" % letter):
+   #for f in glob.glob("/Users/bgporter/temp/%s/*.mp3" % letter):
+   for f in glob.glob("*.mp3"):
       try:
          CheckFile(f)
       except urllib2.HTTPError, e:

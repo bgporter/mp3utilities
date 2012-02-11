@@ -4,11 +4,12 @@
 Requires that you have the mutagen ID parsing library installed.
 '''
 import doctest
-import re
 import errno
 import hashlib
 import os
+import re
 import shutil
+import subprocess
 import sys
 
 import mutagen
@@ -22,17 +23,18 @@ except ImportError:
 
 
 
-kTargetBasePath = "/Volumes/homes/Audio"
+kTargetBasePath = "/Volumes/homes/MusicLibrary"
 
 class MetadataException(Exception):
    pass
 
-def DebugLog(src, dest):
+def DebugLog(src, dest, rate=0):
    print src
    print dest.encode("utf-8")
+   print "Rate = %d" % rate
    print 
 
-def PrepFile(src, dest):
+def PrepFile(src, dest, rate):
    ''' create the directories needed for our copy or move. The attempt to
    create the directory may fail either because it already exists (not really
    an error), or because we were unable to create it for some other reason
@@ -40,7 +42,7 @@ def PrepFile(src, dest):
    with an errno value of errno.EEXIST, we wallow the exception and proceed,
    otherwise we re-raise the exception.
    '''
-   DebugLog(src, dest)
+   DebugLog(src, dest, rate)
    targetPath = os.path.split(dest)[0]
    try:
       os.makedirs(targetPath)
@@ -49,12 +51,24 @@ def PrepFile(src, dest):
          raise
 
 
-def CopyFile(src, dest):
-   PrepFile(src, dest)
-   shutil.copyfile(src, dest)
+def CopyFile(src, dest, rate=0):
+   '''
+      if rate is zero, copy the file as is from source to dest. 
+      if rate is > 0, use lame to change the bitrate of the file.
+   '''
+   PrepFile(src, dest, rate)
+   if not rate:
+      shutil.copyfile(src, dest)
+   else:
+      rateString = "-b%d" % rate
+      cmd = ['lame', '-h', rateString, '--mp3input', src, dest]
+      subprocess.call(cmd)
 
-def MoveFile(src, dest):
-   PrepFile(src, dest)
+
+def MoveFile(src, dest, rate):
+   ''' rate is ignored when we're moving files; files are always moved
+   as-is'''
+   PrepFile(src, dest, rate)
    shutil.move(src, dest)
    
 ops = {'debug' : DebugLog, 'move' : MoveFile, 'copy': CopyFile }
@@ -232,13 +246,13 @@ def CompareFiles(src, dest, mode):
          s = s.lower()[0]
          if s in ('k', 'r'):
             if s == 'r':
-               DupeFile(src, dest, mode, True)
+               DupeFile(src, dest, mode, 0, True)
             break
 
 
 
 
-def DupeFile(src, dest, mode, force=False):
+def DupeFile(src, dest, mode, rate, force=False):
    '''
       create a copy of the file in the correct location (unless there's
       already one there!). Mode is one of:
@@ -248,11 +262,11 @@ def DupeFile(src, dest, mode, force=False):
    '''
    exists = os.path.exists(dest)
    if force or not exists:
-      ops[mode](src, dest)
+      ops[mode](src, dest, rate)
    else:
       CompareFiles(src, dest, mode)
 
-def HandleDir(root, files, destPath, mode="copy", force=False):
+def HandleDir(root, files, destPath, rate, mode="copy", force=False):
    '''
       Operate on the files in a given directory. 
       root = the directory 
@@ -269,7 +283,7 @@ def HandleDir(root, files, destPath, mode="copy", force=False):
          try:
             destFile = FullTargetPath(destPath, srcFile, base, ext)
             try:
-               DupeFile(srcFile, destFile, mode, force)
+               DupeFile(srcFile, destFile, mode, rate, force)
             except OSError, e:
                # can't generate the output file -- print the reason and exit
                # the app.
@@ -287,7 +301,7 @@ def HandleDir(root, files, destPath, mode="copy", force=False):
       if ext.lower() in ('.jpg', '.gif', '.png', '.txt'):
          dest = os.path.join(outputPath, f)
          src = os.path.join(root, f)
-         DupeFile(src, dest, mode, force)
+         DupeFile(src, dest, mode, 0, force)
 
 
 
@@ -306,6 +320,8 @@ if __name__ == "__main__":
    parser.add_argument("-m", "--mode", action="store", nargs="?",
       default = "copy", choices=["debug", "copy", "move"], 
       help = "Move/copy/debug")
+   parser.add_argument("-r", "--rate", action="store", nargs="?",
+      default="0", help="Transcode bitrate (copy only)")
 
    args = parser.parse_args()
 
@@ -313,8 +329,9 @@ if __name__ == "__main__":
       import doctest
       doctest.testmod()
    else:
+      print "*****\nRate = %s\n*****" % args.rate
       for root, dirs, files in os.walk(args.src):
-         HandleDir(root, files, args.dest, args.mode, args.force)
+         HandleDir(root, files, args.dest, int(args.rate), args.mode, args.force)
    print "Done."         
 
 
