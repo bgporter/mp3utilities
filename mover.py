@@ -303,6 +303,10 @@ def HandleDir(root, files, destPath, rate, mode="copy", force=False):
          src = os.path.join(root, f)
          DupeFile(src, dest, mode, 0, force)
 
+def HandleTree(top, dest, rate, mode, force):
+   rate = int(rate)
+   for root, dirs, files in os.walk(top):
+      HandleDir(root, files, dest, rate, mode, force)
 
 
 
@@ -323,15 +327,29 @@ if __name__ == "__main__":
    parser.add_argument("-r", "--rate", action="store", nargs="?",
       default="0", help="Transcode bitrate (copy only)")
 
+   parser.add_argument("-i", "--input", action="store", nargs="?",
+      default="", 
+      help="Input file containing directores to handle (1 per line, relative to `src')" )
+
    args = parser.parse_args()
 
    if args.test:
       import doctest
       doctest.testmod()
    else:
-      print "*****\nRate = %s\n*****" % args.rate
-      for root, dirs, files in os.walk(args.src):
-         HandleDir(root, files, args.dest, int(args.rate), args.mode, args.force)
+      if args.input:
+         print "INPUT: %s" % args.input
+         try:
+            with open(args.input, "r") as f:
+               for dirName in f:
+                  dirName = dirName.strip()
+                  if dirName:
+                     src = os.path.join(args.src, dirName)
+                     HandleTree(src, args.dest, args.rate, args.mode, args.force)
+         except IOError:
+            print "Error opening input file '%s'" % args.input
+      else:
+         HandleTree(args.src, args.dest, args.rate, args.mode, args.force)
    print "Done."         
 
 
