@@ -23,7 +23,7 @@ except ImportError:
 
 
 
-kTargetBasePath = "/Volumes/homes/MusicLibrary"
+kTargetBasePath = "/Volumes/zappa_files/music"
 
 class MetadataException(Exception):
    pass
@@ -31,15 +31,20 @@ class MetadataException(Exception):
 def DebugLog(src, dest, rate=0):
    print src
    print dest.encode("utf-8")
-   print "Rate = %d" % rate
+   print "Rate = %s" % rate
    print 
+
+def ErrorLog(s):
+   print s
+   with open("MoverErrorLog.txt", "wt") as f:
+      f.write("{0}\n".format(s))   
 
 def PrepFile(src, dest, rate):
    ''' create the directories needed for our copy or move. The attempt to
    create the directory may fail either because it already exists (not really
    an error), or because we were unable to create it for some other reason
    (drive not mounted, permissions, etc. If we try this and get an OSError
-   with an errno value of errno.EEXIST, we wallow the exception and proceed,
+   with an errno value of errno.EEXIST, we swallow the exception and proceed,
    otherwise we re-raise the exception.
    '''
    DebugLog(src, dest, rate)
@@ -48,6 +53,8 @@ def PrepFile(src, dest, rate):
       os.makedirs(targetPath)
    except OSError, e:
       if e.errno != errno.EEXIST:
+         msg = "Unable to handle src file {0}".format(src)
+         ErrorLog(msg)
          raise
 
 
@@ -55,21 +62,97 @@ def CopyFile(src, dest, rate=0):
    '''
       if rate is zero, copy the file as is from source to dest. 
       if rate is > 0, use lame to change the bitrate of the file.
+      if rate is a string starting with 'V', use a variable bitrate encoding, 
+      V0 == highest quality, V9 == lowest quality.
+      05 Aug 2012: If the rate of the file we're copying is less than or equal
+      to the target rate, copy the file without doing any transcoding.
    '''
-   PrepFile(src, dest, rate)
-   if not rate:
+   try:
+      PrepFile(src, dest, rate)
+   except OSError:
+      # We're trying to do something with a directory that didn't have any MP3
+      # files contained in it, so there's no good place to put this file. 
+      # Display an error message and move on.
+      return
+      
+   # only try to get rate info if this is actually an MP3 file.
+   try:
+      intRate = int(rate)
+   except ValueError:
+      intRate = 0
+
+   base, ext = os.path.splitext(src)
+   if ext in (".mp3",):
+      if intRate:
+         audio = MP3(src)
+         actualRate = audio.info.bitrate / 1000
+         if actualRate <= rate:
+            print "file rate = %d, target rate = %d -- skipping transcode." % (actualRate, rate)
+            # set the rate to zero to force a simple copy.
+            rate = 0
+   else:
+      rate = 0
+
+   if 0 == intRate:
+      print "simple copy"
       shutil.copyfile(src, dest)
    else:
-      rateString = "-b%d" % rate
-      cmd = ['lame', '-h', rateString, '--mp3input', src, dest]
+      print "transcoding"
+      cmd = ['lame', '-h']
+      if rate.upper().startswith("V"):
+         # they want VBR encoding; the next char should be a digit 0..9
+         try:
+            int(rate[1])
+         except ValueError:
+            print "ERROR -- need a value from 0..9 for VBR quality."
+            sys.exit(0)
+         vbr = rate[1]
+         cmd.extend(["-V", vbr])
+      else:
+         cmd.extend(["-b", rate])
+
+      # okay, so the transcode rate stuff is set. Now we try to get the metadata
+      # out of the MP3 so we can correctly write ID3 tags. We'll always use ID3V2 tags.
+      cmd.append("--id3v2-only")
+
+      # a list of tuples where
+      # [0] is the command line flag to pass to LAME
+      # [1] is the attribute name inside of the mutagen ID3 object.
+      kFields = [ ("--tt", "title"),
+                  ("--ta", "artist"),
+                  ("--tl", "album"),
+                  ("--ty", "date"),
+                  ("--tn", "tracknumber"),
+                  ("--tg", "genre")
+                 ]
+      id3 = EasyID3(src)
+      for (flag, field) in kFields:
+         val = id3.get(field, [u""])[0]
+         if val:
+            # get rid of leading/trailing double quotes that I may have 
+            # stupidly put there.
+            val = val.strip('"')
+            cmd.extend([flag, u'{0}'.format(val)])
+
+      # okay, all the metadata & other args are set. Pass in the src & dest 
+      # values and make this go.       
+      cmd.extend(['--mp3input', src, dest])
+
+      try:
+         print u" ".join(cmd)
+      except UnicodeDecodeError, e:
+         print "Error because there's unicode data here... {0}".format(e)
       subprocess.call(cmd)
 
 
 def MoveFile(src, dest, rate):
    ''' rate is ignored when we're moving files; files are always moved
    as-is'''
-   PrepFile(src, dest, rate)
-   shutil.move(src, dest)
+   try:
+      PrepFile(src, dest, rate)
+      shutil.move(src, dest)
+   except OSError:
+      pass
    
 ops = {'debug' : DebugLog, 'move' : MoveFile, 'copy': CopyFile }
 
@@ -87,7 +170,7 @@ def Scrub(s):
    '''
    #s = s.lower()
 
-   kIllegals = u":/\\?<>"
+   kIllegals = u":/\\?<>,"
    try:
       for c in kIllegals:
          s = s.replace(c, u" ")
@@ -97,6 +180,8 @@ def Scrub(s):
       s = s.strip()
       # replace each space w a dash
       s = s.replace(u' ', u'-')
+      # replace multiple dashes with a single dash
+      s = re.sub("-+", u'-', s)
 
       return s
    except UnicodeDecodeError, e:
@@ -152,6 +237,13 @@ def TargetPath(destPath, id3):
          artist = performer
       else:
          artist = u"unknown-artist"
+   # 7/4/13 -- add a leading year before the album name so that albums sort
+   # chronologically.
+   try:
+      year = id3['date'][0]
+      year = year + u'_'
+   except KeyError:
+      year = ''
 
 
 
@@ -160,7 +252,7 @@ def TargetPath(destPath, id3):
    except KeyError:
       album = u"unknown-album"
 
-   return os.path.join(destPath, artist, Scrub(u"%s%s" % (album, discNumber)))
+   return os.path.join(destPath, artist, Scrub(u"%s%s%s" % (year, album, discNumber)))
 
 def Filename(id3, base):
    '''
@@ -189,6 +281,7 @@ def Filename(id3, base):
    try:
       return u"%s%s" % (trackNum, Scrub(id3['title'][0]))
    except KeyError:
+      # no id3 title, so fall back to using the original file name.
       print "base = ", base
       return u"%s%s" % (trackNum, Scrub(base))
 
@@ -298,23 +391,31 @@ def HandleDir(root, files, destPath, rate, mode="copy", force=False):
    # if there were any image files, etc, don't forget them!
    for f in others:
       base, ext = os.path.splitext(f)
+      print "checking %s '%s'" % (base, ext)
       if ext.lower() in ('.jpg', '.gif', '.png', '.txt'):
          dest = os.path.join(outputPath, f)
          src = os.path.join(root, f)
          DupeFile(src, dest, mode, 0, force)
+      else:
+         print "ignoring %s '%s'" % (base, ext)
+
 
 def HandleTree(top, dest, rate, mode, force):
-   rate = int(rate)
+   #rate = int(rate)
    for root, dirs, files in os.walk(top):
       HandleDir(root, files, dest, rate, mode, force)
 
 
 
 if __name__ == "__main__":
+   import sys
+   print sys.argv
+
+
    import argparse
    parser = argparse.ArgumentParser("Move and rename MP3 files.")
    parser.add_argument("-t", "--test", action='store_true', 
-      help ="run unit tests")
+      help ="run unit tests (other options ignored)")
    parser.add_argument("-f", "--force", action='store_true', 
       help="force a copy/move when duplicate files are found at the destination")
    parser.add_argument("-s", "--src", action="store", nargs="?",
@@ -325,13 +426,15 @@ if __name__ == "__main__":
       default = "copy", choices=["debug", "copy", "move"], 
       help = "Move/copy/debug")
    parser.add_argument("-r", "--rate", action="store", nargs="?",
-      default="0", help="Transcode bitrate (copy only)")
+      default="0", help="Transcode bitrate (copy only). Use V[0..9] for VBR")
+
 
    parser.add_argument("-i", "--input", action="store", nargs="?",
       default="", 
       help="Input file containing directores to handle (1 per line, relative to `src')" )
 
    args = parser.parse_args()
+
 
    if args.test:
       import doctest
@@ -345,7 +448,11 @@ if __name__ == "__main__":
                   dirName = dirName.strip()
                   if dirName:
                      src = os.path.join(args.src, dirName)
-                     HandleTree(src, args.dest, args.rate, args.mode, args.force)
+                     try:
+                        HandleTree(src, args.dest, args.rate, args.mode, args.force)
+                     except IOError, e:
+                        print "Error handling directory at %s: %s" % (src,
+                              str(e))
          except IOError:
             print "Error opening input file '%s'" % args.input
       else:
