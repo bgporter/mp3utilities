@@ -16,6 +16,8 @@ kBaseUrl = "http://developer.echonest.com/api/v4/track"
 
 def CheckFile(filePath):
    print "Processing %s" % filePath
+
+   # grab the first 1MB from the MP3 file...
    fileData = open(filePath, "rb").read()[:1024*1024]
 
 
