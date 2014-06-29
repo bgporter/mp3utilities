@@ -170,7 +170,7 @@ def Scrub(s):
    '''
    #s = s.lower()
 
-   kIllegals = u":/\\?<>,"
+   kIllegals = u":/\\?<>,!\""
    try:
       for c in kIllegals:
          s = s.replace(c, u" ")
