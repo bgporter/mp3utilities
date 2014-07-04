@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 import mutagen
 from mutagen.easyid3 import EasyID3
@@ -39,6 +40,35 @@ def ErrorLog(s):
    with open("MoverErrorLog.txt", "wt") as f:
       f.write("{0}\n".format(s))   
 
+
+
+def HandleHistory(srcPath, targetPath):
+   ''' if there's a history file in our src, we add a new line in the 
+      copy at the destination after copying it there. Otherwise, we create
+      a new empty file at the destination dir and put the current time
+      into it.
+   '''
+   print "HandleHistory src = {0} dest = {1}".format(srcPath, targetPath)
+   history = []
+   srcAlbumName = os.path.split(srcPath)[1]
+   srcHistory = "{0}.history".format(srcAlbumName)
+   try:
+      with open(os.path.join(srcPath, srcHistory), "rt") as f:
+         history = [s.strip() for s in f]
+   except IOError:
+      # file doesn't exist, which is legit. ignore it.
+      pass
+
+   destAlbumName = os.path.split(targetPath)[1]
+   destHistory = "{0}.history".format(destAlbumName)
+   with open(os.path.join(targetPath, destHistory), "wt") as f:
+      history.append("{0}".format(int(time.time())))
+      f.write("\n".join(history))
+
+
+
+   
+
 def PrepFile(src, dest, rate):
    ''' create the directories needed for our copy or move. The attempt to
    create the directory may fail either because it already exists (not really
@@ -48,9 +78,11 @@ def PrepFile(src, dest, rate):
    otherwise we re-raise the exception.
    '''
    DebugLog(src, dest, rate)
+   srcPath = os.path.split(src)[0]
    targetPath = os.path.split(dest)[0]
    try:
       os.makedirs(targetPath)
+      HandleHistory(srcPath, targetPath)
    except OSError, e:
       if e.errno != errno.EEXIST:
          msg = "Unable to handle src file {0}".format(src)
