@@ -40,6 +40,58 @@ def ErrorLog(s):
    with open("MoverErrorLog.txt", "wt") as f:
       f.write("{0}\n".format(s))   
 
+def Scrub(s):
+   '''
+      1. convert the string into lowercase & strip outer whitespace
+      2. Remove any characters that we don't want in filenames or paths from a
+      string, eliminating multiple whitespace chars within
+      3. Replace whitespace with '-'
+      >>> Scrub(u"No Illegal characters")
+      u'no-illegal-characters'
+      >>> Scrub(u"this: <should> /be\\ shorter?")
+      u'this-should-be-shorter'
+
+   '''
+   #s = s.lower()
+
+   kIllegals = u":/\\?<>,!\""
+   try:
+      for c in kIllegals:
+         s = s.replace(c, u" ")
+      #  replace square brackets with parens -- they freak out other 
+      #  code of mine that uses glob to process file names.
+      s = s.replace('[', '(')
+      s = s.replace(']', ')')   
+      # replace multiple whitespace chars with a single space
+      s = re.sub("\s+", u" ", s)
+      # get rid of any whitespace on the outside
+      s = s.strip()
+      # replace each space w a dash
+      s = s.replace(u' ', u'-')
+      # replace multiple dashes with a single dash
+      s = re.sub("-+", u'-', s)
+
+      return s
+   except UnicodeDecodeError, e:
+      return Scrub(s.decode("utf-8"))
+
+
+class Metadata(object):
+   def __init__(self, id3):
+      ''' id3 is probably an instance of mutagen.easyid3.EasyId3 '''
+      self.data = id3
+
+   def __getattr__(self, key):
+      ''' look at the id3 metadata to get the desired value out of it. If that key
+         isn't found, we return ''
+      '''
+      try:
+         val = self.data[key][0]
+      except KeyError:
+         val = ''
+
+      return Scrub(val)
+
 
 
 def HandleHistory(srcPath, targetPath):
@@ -111,7 +163,7 @@ def CopyFile(src, dest, rate=0):
    try:
       intRate = int(rate)
    except ValueError:
-      intRate = 0
+      intRate = None
 
    base, ext = os.path.splitext(src)
    if ext in (".mp3",):
@@ -188,36 +240,7 @@ def MoveFile(src, dest, rate):
    
 ops = {'debug' : DebugLog, 'move' : MoveFile, 'copy': CopyFile }
 
-def Scrub(s):
-   '''
-      1. convert the string into lowercase & strip outer whitespace
-      2. Remove any characters that we don't want in filenames or paths from a
-      string, eliminating multiple whitespace chars within
-      3. Replace whitespace with '-'
-      >>> Scrub(u"No Illegal characters")
-      u'no-illegal-characters'
-      >>> Scrub(u"this: <should> /be\\ shorter?")
-      u'this-should-be-shorter'
 
-   '''
-   #s = s.lower()
-
-   kIllegals = u":/\\?<>,!\""
-   try:
-      for c in kIllegals:
-         s = s.replace(c, u" ")
-      # replace multiple whitespace chars with a single space
-      s = re.sub("\s+", u" ", s)
-      # get rid of any whitespace on the outside
-      s = s.strip()
-      # replace each space w a dash
-      s = s.replace(u' ', u'-')
-      # replace multiple dashes with a single dash
-      s = re.sub("-+", u'-', s)
-
-      return s
-   except UnicodeDecodeError, e:
-      return Scrub(s.decode("utf-8"))
 
 
 
@@ -240,8 +263,9 @@ def TargetPath(destPath, id3):
       u'kneebody/low-electrical-worker_(disc_2)'
    '''
    discNumber = u""
+   m = Metadata(id3)
    try:
-      discNum = id3['discnumber'][0]
+      discNum = m.discnumber
       disc, of = map(int, discNum.split('/'))
       if disc > 0 and of > 1:
          discNumber = u"_(disc_%d)" % disc
@@ -250,12 +274,13 @@ def TargetPath(destPath, id3):
       pass
 
    try:
-      artist = Scrub(id3["artist"][0])
+      artist = m.artist
    except KeyError:
       artist = ''
 
+
    try:
-      performer = Scrub(id3['performer'][0])
+      performer = m.performer
    except KeyError:
       performer = ''
 
@@ -272,7 +297,7 @@ def TargetPath(destPath, id3):
    # 7/4/13 -- add a leading year before the album name so that albums sort
    # chronologically.
    try:
-      year = id3['date'][0]
+      year = m.date
       year = year + u'_'
    except KeyError:
       year = ''
@@ -280,7 +305,7 @@ def TargetPath(destPath, id3):
 
 
    try:
-      album = id3["album"][0]
+      album = m.album
    except KeyError:
       album = u"unknown-album"
 
@@ -303,19 +328,25 @@ def Filename(id3, base):
       u'teddy-ruxpin'
    '''
    try:
-      trackNum = id3['tracknumber'][0]
+      m = Metadata(id3)
+      trackNum = m.tracknumber
       # Amazon track numbers are sometimes in the form 'x/y')
       trackNum = trackNum.split('/')[0]
       trackNum = u"%02d_" % int(trackNum)
    except (KeyError, ValueError):
       trackNum = u""
 
-   try:
-      return u"%s%s" % (trackNum, Scrub(id3['title'][0]))
-   except KeyError:
-      # no id3 title, so fall back to using the original file name.
-      print "base = ", base
-      return u"%s%s" % (trackNum, Scrub(base))
+
+   title = m.title
+   if not title:
+      title = base
+
+   artist = m.artist
+
+   albumArtist = m.performer
+
+   return u"%s%s" % (trackNum, title)
+
 
 
 def FullTargetPath(destPath, f, base, extension):

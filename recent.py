@@ -25,7 +25,7 @@ import glob
 kMusicRoot = "/media/usb0/music/"
 kRootLen = len(kMusicRoot)
 kPLaylistDir = "/var/lib/mpd/playlists/"
-kPLaylistExt = ".m3u"
+kPLaylistExt = "m3u"
 
 
 class Recent(object):
@@ -41,7 +41,7 @@ class Recent(object):
       self.now = datetime.datetime.today()
       self.cutoffs = []
       for p in periods:
-         self.cutoffs.append(self.now - datetime.datetime.timedelta(days=p))
+         self.cutoffs.append(self.now - datetime.timedelta(days=p))
          self.tracks[p] = []
 
 
@@ -50,19 +50,24 @@ class Recent(object):
       if path.endswith(os.sep):
          path = path[:-1]
       try:
-         with open("{0}.history", "rt") as f:
+         _, historyFile = os.path.split(path)
+         with open(os.path.join(path, "{0}.history".format(historyFile)), "rt") as f:
             lines = [l.strip() for l in f]
             try:
-               createTime = int(lines[0])
+               createTime = float(lines[0])
                createDate = datetime.datetime.fromtimestamp(createTime)
                for period, cutoff in zip(self.periods, self.cutoffs):
                   if createDate > cutoff:
-                     for track in glob.glob(os.path.join(path, "*.mp3")):
-                        self.tracks[period].append(track[kRootLen:])
-            except ValueError:
-               pass # weird data, should probably log
+                     try:
+                        tracks = glob.glob(os.path.join(path, "*.mp3"))
+                        for track in tracks:
+                           self.tracks[period].append(track[kRootLen:])
+                     except Exception, e:
+                        print "!!! on path ", path, str(e)
+            except ValueError, e:
+               print "Can't convert", str(e)
       except IOError:
-         pass # file not there.
+         print "!!! HISTORY FILE NOT FOUND for {0}".format(path)
 
    def ScanForTracks(self):
       for (path, dirs, files) in os.walk(kMusicRoot):
@@ -72,12 +77,14 @@ class Recent(object):
 
    def WritePlaylists(self):
       for p in self.periods:
-         fileName = "{0}.{1}".format(period, kPLaylistExt)
+         fileName = "{0}-days.{1}".format(p, kPLaylistExt)
          with open(os.path.join(kPLaylistDir, fileName), "wt") as f:
             tracks = self.tracks[p]
+            tracks.sort()
             f.write("\n".join(tracks))
 
 
 if __name__ == "__main__":
-   recent = Recent(kMusicRoot, [30])
+   recent = Recent(kMusicRoot, [7, 30, 90, 180])
    recent.ScanForTracks()
+   recent.WritePlaylists()
