@@ -88,11 +88,15 @@ class Mp3File(object):
       1. multi-disc albums (which should have a "(disc n)" appended)
       2. Various Artists compilations, which will instead have the actual Artist
          name encoded as part of the filename instead.
->>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], "date": ["2008"]}
->>> m = Mp3File('', d1)
->>> m.DestPath()
-u'Kneebody/2008_Low-Electrical-Worker'
-
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], "date": ["2008"]}
+      >>> m = Mp3File('', d1)
+      >>> m.DestPath()
+      u'Kneebody/2008_Low-Electrical-Worker'
+      >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
+      ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"]}
+      >>> m = Mp3File('', d)
+      >>> m.DestPath()
+      u'Various-Artists/2011_Greatest-Hits-of-the-Naughts'
 
       '''
       try:
@@ -104,28 +108,18 @@ u'Kneebody/2008_Low-Electrical-Worker'
          # ignore the error & carry on.
          discNumber = u""
 
-      try:
-         year = self.meta.date
-      except KeyError:
-         year = ''
+      year = self.meta.date
 
-      try:
-         album = self.meta.album
-      except KeyError:
+      album = self.meta.album
+      if not album:
          album = "unknown album"
 
-      try:
-         performer = self.meta.performer
-      except KeyError:
-         performer = u""
+      performer = self.meta.performer
 
-      try: 
-         artist = self.meta.artist
-      except KeyError:
-         artist = u""
+      artist = self.meta.artist
 
       if performer.lower() != artist.lower():
-         if TitleCase(performer).startswith("Various Artists"):
+         if performer.lower().startswith("various-artists"):
             # treat this as a compilation.
             self.compilation = True
             artist = performer
@@ -144,7 +138,7 @@ u'Kneebody/2008_Low-Electrical-Worker'
 
 
       albumName = "_".join(w for w in [year, album, discNumber] if w)
-      return os.path.join(Scrub(artist), Scrub(albumName))
+      return os.path.join(artist, albumName)
 
 
 
