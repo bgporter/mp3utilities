@@ -1,6 +1,10 @@
 
 import os
 
+kDirectory = "DIR"
+kMusic = "MP3"
+kOtherFile = "ETC"
+
 class FileSource(object):
    def __init__(self, base, others=None):
       '''
@@ -53,19 +57,41 @@ class FileSource(object):
       for subdir in self.others:
          yield os.path.join(self.base, subdir)
 
-   def GetFiles(self, dirPath, files):
+
+
+   def GetFiles(self):
       '''
-         Yield each of the files in this directory, using path/list
-         as yielded by os.walk()
-
-         >>> f = FileSource('a')
-         >>> list(f.GetFiles('a/b/c', ['foo.mp3', 'bar.mp3', 'cover.jpg']))
-         ['a/b/c/foo.mp3', 'a/b/c/bar.mp3', 'a/b/c/cover.jpg']
+         Walk through all of the directories that we should be looking at. if
+         any of them contain files, yield those files back to whoever
+         called us, one at a time.
       '''
-      for file in files:
-         yield(os.path.join(dirPath, file))
+      visited = set()
+      dirList = self.GetDirectories()
+      for d in dirList:
+         # walk into the directory.
+         for (dirPath, _, files) in os.walk(d):
+            sourceDir = os.path.join(self.base, dirPath)
+            # skip any directories that we've already looked into -- 
+            # ignore accidental dupes.
+            if sourceDir not in visited:
+               visited.add(sourceDir)
+               yield(kDirectory, sourceDir)
+               otherFiles = []
+               # we yield all the mp3 files first, and collect any others 
+               # to be returned after the mp3s are complete.
+               for f in files:
+                  base, ext = os.path.splitext(f)
+                  if ext.lower() in (u".mp3",):
+                     yield(kMusic, os.path.join(sourceDir, f))
+                  else:
+                     otherFiles.append(f)
+               # now all the MP3 files are gone, yield back whatever's left.
+               for f in otherFiles:
+                     yield(kOtherFile, os.path.join(sourceDir, f))
 
 
+   def __iter__(self):
+      return self.GetFiles()
 
 
 
