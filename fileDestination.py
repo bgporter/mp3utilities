@@ -92,6 +92,12 @@ class Mp3File(object):
       >>> m = Mp3File('', d1)
       >>> m.DestPath()
       u'Kneebody/2008_Low-Electrical-Worker'
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], 
+      ... "date": ["2008"], "discnumber" : ["1/2"]}
+      >>> m = Mp3File('', d1)
+      >>> m.DestPath()
+      u'Kneebody/2008_Low-Electrical-Worker_(disc-1)'
+
       >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
       ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"]}
       >>> m = Mp3File('', d)
@@ -100,10 +106,10 @@ class Mp3File(object):
 
       '''
       try:
-         discNum = self.meta.discNumber
-         disc, of = map(int, discNum.split('/'))
+         discNum = self.meta.discnumber
+         disc, of = map(int, discNum.split('-'))
          if disc > 0 and of > 1:
-            discNumber = "(disc {0})".format(disc)
+            discNumber = "(disc-{0})".format(disc)
       except (ValueError, KeyError):
          # ignore the error & carry on.
          discNumber = u""
