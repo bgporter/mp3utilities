@@ -69,7 +69,7 @@ class Metadata(object):
       except KeyError:
          val = ''
 
-      return Scrub(val)
+      return val
 
 
 class Mp3File(object):
@@ -107,7 +107,7 @@ class Mp3File(object):
       '''
       try:
          discNum = self.meta.discnumber
-         disc, of = map(int, discNum.split('-'))
+         disc, of = map(int, discNum.split('/'))
          if disc > 0 and of > 1:
             discNumber = "(disc-{0})".format(disc)
       except (ValueError, KeyError):
@@ -125,7 +125,7 @@ class Mp3File(object):
       artist = self.meta.artist
 
       if performer.lower() != artist.lower():
-         if performer.lower().startswith("various-artists"):
+         if performer.lower().startswith("various artists"):
             # treat this as a compilation.
             self.compilation = True
             artist = performer
@@ -144,7 +144,7 @@ class Mp3File(object):
 
 
       albumName = "_".join(w for w in [year, album, discNumber] if w)
-      return os.path.join(artist, albumName)
+      return os.path.join(Scrub(artist), Scrub(albumName))
 
 
 
