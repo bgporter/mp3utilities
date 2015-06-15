@@ -199,7 +199,7 @@ class Mp3File(object):
 
       '''
 
-      name = "_".join(Scrub(w) for w in (self.trackNum, self.title) if w)
+      name = "_".join(Scrub(w) for w in (self.trackNum, self.trackArtist, self.title) if w)
       return u"{0}.mp3".format(name)
 
 
