@@ -14,6 +14,10 @@ kOnDupe = ("force", "ignore", "ask")
 class MetadataException(Exception):
    pass
 
+
+class InvalidFileException(Exception):
+   pass
+
 def TitleCase(s):
    words = s.split()
    return ' '.join(w.capitalize() for w in words)
@@ -81,44 +85,32 @@ class Mp3File(object):
       self.meta = Metadata(id3)
       self.compilation = False
 
-   def DestPath(self):
-      ''' Return a new path where this file should be stored relative to however 
-      the FileDestination that we're working with wants things to be. In general, 
-      this is going to be Artist/Year_Album with possible exception cases for:
-      1. multi-disc albums (which should have a "(disc n)" appended)
-      2. Various Artists compilations, which will instead have the actual Artist
-         name encoded as part of the filename instead.
-      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], "date": ["2008"]}
-      >>> m = Mp3File('', d1)
-      >>> m.DestPath()
-      u'Kneebody/2008_Low-Electrical-Worker'
-      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], 
-      ... "date": ["2008"], "discnumber" : ["1/2"]}
-      >>> m = Mp3File('', d1)
-      >>> m.DestPath()
-      u'Kneebody/2008_Low-Electrical-Worker_(disc-1)'
+      originalFilename = os.path.basename(pathToFile)
+      baseName, ext = os.path.splitext(originalFilename)
+      # This class can only handle MP3 files.
+      if ext.lower() not in (u".mp3"):
+         raise InvalidFileException
 
-      >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
-      ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"]}
-      >>> m = Mp3File('', d)
-      >>> m.DestPath()
-      u'Various-Artists/2011_Greatest-Hits-of-the-Naughts'
-
-      '''
       try:
          discNum = self.meta.discnumber
          disc, of = map(int, discNum.split('/'))
          if disc > 0 and of > 1:
-            discNumber = "(disc-{0})".format(disc)
+            self.discNumber = "(disc {0})".format(disc)
       except (ValueError, KeyError):
          # ignore the error & carry on.
-         discNumber = u""
+         self.discNumber = u""
 
-      year = self.meta.date
+      self.year = self.meta.date
 
-      album = self.meta.album
-      if not album:
-         album = "unknown album"
+      self.album = self.meta.album
+      if not self.album:
+         self.album = u"unknown album"
+
+      # if the disc # is present in the album name in the metadata, 
+      # do *not* append it again. 
+      m = re.search(r"disc \d+", self.album.lower())
+      if m:
+         self.discNumber = u""   
 
       performer = self.meta.performer
 
@@ -142,10 +134,73 @@ class Mp3File(object):
          if not artist:
             artist = "unknown artist"
 
+      if self.compilation:
+         self.albumArtist = performer
+         self.trackArtist = artist
+      else:
+         self.albumArtist = artist
+         self.trackArtist = u""
 
-      albumName = "_".join(w for w in [year, album, discNumber] if w)
-      return os.path.join(Scrub(artist), Scrub(albumName))
+      try:
+         trackNum = self.meta.tracknumber
+         # Amazon track numbers are sometimes in the form 'x/y')
+         trackNum = trackNum.split('/')[0]
+         trackNum = u"%02d" % int(trackNum)
+      except (KeyError, ValueError):
+         trackNum = u""
 
+      self.trackNum = trackNum
+
+      self.title = self.meta.title
+      if not self.title:
+         self.title = baseName
+
+
+   def DestPath(self):
+      ''' Return a new path where this file should be stored relative to however 
+      the FileDestination that we're working with wants things to be. In general, 
+      this is going to be Artist/Year_Album with possible exception cases for:
+      1. multi-disc albums (which should have a "(disc n)" appended)
+      2. Various Artists compilations, which will instead have the actual Artist
+         name encoded as part of the filename instead.
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], "date": ["2008"]}
+      >>> m = Mp3File('', d1)
+      >>> m.DestPath()
+      u'Kneebody/2008_Low-Electrical-Worker'
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], 
+      ... "date": ["2008"], "discnumber" : ["1/2"]}
+      >>> m = Mp3File('', d1)
+      >>> m.DestPath()
+      u'Kneebody/2008_Low-Electrical-Worker_(disc-1)'
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker DISC 2"], 
+      ... "date": ["2008"], "discnumber" : ["1/2"]}
+      >>> m = Mp3File('', d1)
+      >>> m.DestPath()
+      u'Kneebody/2008_Low-Electrical-Worker-DISC-2'
+      >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
+      ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"]}
+      >>> m = Mp3File('', d)
+      >>> m.DestPath()
+      u'Various-Artists/2011_Greatest-Hits-of-the-Naughts'
+
+      '''
+
+      albumName = "_".join(w for w in [self.year, self.album, self.discNumber] if w)
+      return os.path.join(Scrub(self.albumArtist), Scrub(albumName))
+
+
+   def DestFile(self):
+      '''
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], 
+      ...   "date": ["2008"], "tracknumber" : ['4'], "title": ["Dr. Beauchef"]}
+      >>> m = Mp3File('', d1)
+      >>> m.DestFile()
+      u'04_Dr.-Beauchef.mp3'
+
+      '''
+
+      name = "_".join(Scrub(w) for w in (self.trackNum, self.title) if w)
+      return u"{0}.mp3".format(name)
 
 
 
