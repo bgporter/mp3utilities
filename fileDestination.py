@@ -10,6 +10,8 @@ from mutagen.mp3 import MP3
 kModes = ("copy", "move", "debug")
 kOnDupe = ("force", "ignore", "ask")
 
+#                 0    1    2    3    4    5    6
+kVbrEquivalents = [245, 225, 190, 175, 165, 130, 115]
 
 class MetadataException(Exception):
    pass
@@ -83,7 +85,12 @@ class Mp3File(object):
       else:
          id3 = metadata
       self.meta = Metadata(id3)
-      self.compilation = False
+
+      try:
+         audio = MP3()
+         self.bitrate = audio.info.bitrate / 1000
+      except (IOError, AttributeError):
+         self.bitrate = 128
 
       originalFilename = os.path.basename(pathToFile)
       baseName, ext = os.path.splitext(originalFilename)
@@ -100,7 +107,10 @@ class Mp3File(object):
          # ignore the error & carry on.
          self.discNumber = u""
 
-      self.year = self.meta.date
+      # If the date is in the YYYY-MM-DD format, make sure we 
+      # only use the year.
+      self.year = self.meta.date[:4]
+
 
       self.album = self.meta.album
       if not self.album:
@@ -115,31 +125,28 @@ class Mp3File(object):
       performer = self.meta.performer
 
       artist = self.meta.artist
-
+      self.trackArtist = u""
+      self.albumArtist = artist
+      self.compilation = False
       if performer.lower() != artist.lower():
          if performer.lower().startswith("various artists"):
             # treat this as a compilation.
             self.compilation = True
-            artist = performer
+            self.albumArtist = performer
+            self.trackArtist = artist
 
          elif performer:
             # we know performer but not artist
             if not artist:
-               artist = performer
+               self.albumArtist = performer
 
          # else we know the artist but not performer, which we don't care about.
       else:
          # performer & artist are the same -- if they're empty, label 
          # the artist as unknown.
          if not artist:
-            artist = "unknown artist"
+            self.albumArtist = "unknown artist"
 
-      if self.compilation:
-         self.albumArtist = performer
-         self.trackArtist = artist
-      else:
-         self.albumArtist = artist
-         self.trackArtist = u""
 
       try:
          trackNum = self.meta.tracknumber
@@ -154,6 +161,11 @@ class Mp3File(object):
       self.title = self.meta.title
       if not self.title:
          self.title = baseName
+
+   def __str__(self):
+      return '''Album Artist: {0.albumArtist}\nTrack Artist: {0.trackArtist}
+Album: {0.album}\nTitle: {0.title}\nTrack #: {0.trackNum}\nYear: {0.year}\nDisc #: {0.discNumber}
+'''.format(self)
 
 
    def DestPath(self):
@@ -178,7 +190,8 @@ class Mp3File(object):
       >>> m.DestPath()
       u'Kneebody/2008_Low-Electrical-Worker-DISC-2'
       >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
-      ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"]}
+      ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"],
+      ...    "tracknumber" : "5"}
       >>> m = Mp3File('', d)
       >>> m.DestPath()
       u'Various-Artists/2011_Greatest-Hits-of-the-Naughts'
@@ -196,6 +209,18 @@ class Mp3File(object):
       >>> m = Mp3File('', d1)
       >>> m.DestFile()
       u'04_Dr.-Beauchef.mp3'
+      >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
+      ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"],
+      ...    "tracknumber" : "5"}
+      >>> m = Mp3File('', d)
+      >>> m.DestFile()
+      u'05_Baloney-Bob_Bla-Bla-Bla.mp3'
+
+      >>> d1 = {"artist" : ["Kneebody"], "album": ["Low Electrical Worker"], 
+      ...   "date": ["2008"], "tracknumber" : ['4']}
+      >>> m = Mp3File('foo/bar/originalFilename.mp3', d1)
+      >>> m.DestFile()
+      u'04_originalFilename.mp3'
 
       '''
 
@@ -209,13 +234,47 @@ class Mp3File(object):
 
 class FileDestination(object):
    def __init__(self, baseDir, mode="copy", onDupe="force", rate="0"):
+      """
+      >>> f = FileDestination(".", "copy", "force", "V4")
+      >>> f.vbr
+      True
+
+      """
       assert(mode in kModes)
       assert(onDupe in kOnDupe)
 
       self.baseDir = baseDir
       self.mode = mode
       self.onDupe = onDupe
-      self.rate = rate
+      # we need to handle VBR separately from 
+      self.vbr = False
+      if rate.lower().startswith('v'):
+         self.vbr = True
+         rate = rate[1:]
+
+      self.rate = int(rate)
+
+      self.currentOutputDir = ""
+
+
+   def PrepDestination(self):
+      '''
+         Assumes that self.currentOutputDir has been set already.
+         Create the directories needed for our copy or move. The attempt to
+         create the directory may fail either because it already exists (not really
+         an error), or because we were unable to create it for some other reason
+         (drive not mounted, permissions, etc. If we try this and get an OSError
+         with an errno value of errno.EEXIST, we swallow the exception and proceed,
+         otherwise we re-raise the exception.
+      '''
+
+      try:
+         os.makedirs(self.currentOutputDir)
+      except OSError, e:
+         if e.errno != errno.EEXIST:
+            # !!! display/log the error
+            # and re-raise it.
+            raise
 
 
    def HandleFile(self, type, pathToFile):
@@ -223,27 +282,49 @@ class FileDestination(object):
          type -- one of fileSource.kDirectory, fileSource.kMusic, or 
          fileSource.kOtherFile.
          pathToFile -- full path to the existing source file.
+
+         returns True/False to indicate the success/fail whether this file 
+         was handled.
       '''
-      if type == fileSource.kDirectory:
-         return self.HandleDir(pathToFile)
-      elif type == fileSource.kMusic:
-         return self.HandleMusic(pathToFile)
-      elif type == fileSource.kOtherFile:
-         return self.HandleOtherFile(pathToFile)
+
+      handlers = {fileSource.kDirectory   : self.HandleDir,
+                  fileSource.kMusic       : self.HandleMusic,
+                  fileSource.kOtherFile   : self.HandleOtherFile
+                  }
+
+      handler = handlers.get(type, None)
+      retval = False
+      if handler:
+         retval = handler(pathToFile)
       else:
          ### !!! log the weirdness
          print "ERROR: Unknown file type {0}".format(type)
-         return None
+
+      return retval
 
 
    def HandleDir(self, path):
-      pass
+      # when we see a new directory, we clear the current output path...
+      self.currentOutputDir = ""
+      return True
 
    def HandleMusic(self, path):
-      pass
+      m = Mp3File(path)
+      destPath = m.DestPath()
+      destFile = m.DestFile()
+
+      destPath = os.path.join(self.baseDir, destPath)
+      if destPath != self.currentOutputDir:
+         # writing to a new directory. Make sure that it exists.
+         self.currentOutputDir = destPath
+         self.PrepDestination()
+
+
+
 
    def HandleOtherFile(self, path):
-      pass
+      ''' the destination of this file is currentOutputDir + originalFilename '''
+
 
 
 if __name__ == "__main__":
