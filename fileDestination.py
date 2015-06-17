@@ -1,6 +1,8 @@
 
 import os
 import re
+import shutil
+import subprocess
 
 import mutagen
 from mutagen.easyid3 import EasyID3
@@ -12,6 +14,19 @@ kOnDupe = ("force", "ignore", "ask")
 
 #                 0    1    2    3    4    5    6
 kVbrEquivalents = [245, 225, 190, 175, 165, 130, 115]
+
+
+kMp3FileStrFormat = '''Album Artist: {0.albumArtist}
+Track Artist: {0.trackArtist}
+Album:        {0.album}
+Title:        {0.title}
+Track #:      {0.trackNum}
+Year:         {0.year}
+Disc #:       {0.discNumber}
+Bitrate:      {0.bitrate}
+Genre:        {0.genre}
+'''
+
 
 class MetadataException(Exception):
    pass
@@ -90,6 +105,7 @@ class Mp3File(object):
          audio = MP3()
          self.bitrate = audio.info.bitrate / 1000
       except (IOError, AttributeError):
+         # fake it.
          self.bitrate = 128
 
       originalFilename = os.path.basename(pathToFile)
@@ -113,6 +129,8 @@ class Mp3File(object):
 
 
       self.album = self.meta.album
+      self.genre = self.meta.genre
+
       if not self.album:
          self.album = u"unknown album"
 
@@ -163,9 +181,17 @@ class Mp3File(object):
          self.title = baseName
 
    def __str__(self):
-      return '''Album Artist: {0.albumArtist}\nTrack Artist: {0.trackArtist}
-Album: {0.album}\nTitle: {0.title}\nTrack #: {0.trackNum}\nYear: {0.year}\nDisc #: {0.discNumber}
-'''.format(self)
+      return kMp3FileStrFormat.format(self)
+
+   @property
+   def artist(self):
+      ''' when we put metadata into a transcoded file, we need to know the
+         'correct' artist name to use, which may vary if this is a compilation.
+      '''
+      if self.compilation:
+         return self.trackArtist
+      else:
+         return self.albumArtist
 
 
    def DestPath(self):
@@ -256,6 +282,20 @@ class FileDestination(object):
 
       self.currentOutputDir = ""
 
+      if self.mode == "copy":
+         if self.vbr or (self.rate > 0):
+            self.MusicHandler = self._DoTranscode
+         else:
+            self.MusicHandler = self._DoCopy
+         self.OtherHandler = self._DoCopy
+      elif self.mode == "move":
+         self.MusicHandler = self._DoMove
+         self.OtherHandler = self._DoMove
+      elif self.mode == "debug":
+         self.MusicHandler = self._DoDebug
+         self.OltherHandler = self._DoDebug
+
+
 
    def PrepDestination(self):
       '''
@@ -303,6 +343,71 @@ class FileDestination(object):
       return retval
 
 
+   def _DoMove(self, srcFile, destFile):
+      ''' move the file from its current location to its new destination.'''
+      shutil.move(srcFile, destFile)
+
+   def _DoCopy(self, srcFile, destFile):
+      ''' simple copy from src-->dest. No rate change of MP3 files. '''
+      shutil.copyfile(srcFile, destFile)
+
+   def _DoTranscode(self, srcFile, destFile):
+      ''' create a new copy of the srcFile at destFile, changing its encoding
+         bit rate as we go. Requires that LAME is installed.
+      '''
+      original = Mp3File(srcFile)
+
+      # !!!TODO: compare rate of source file; if it's less than what our
+      # target rate is, copy the file as is instead of transcoding. We only
+      # transcode to lower bitrates.
+
+      cmd = ['lame', '-h']
+      if self.vbr:
+         cmd.extend(["-V", self.rate])
+      else:
+         cmd.extend(["-b", self.rate])
+
+      ## make sure that the metadata gets put in the new file correctly.
+      cmd.append("--id3v2-only")
+      # a list of tuples where
+      # [0] is the command line flag to pass to LAME
+      # [1] is the attribute name inside of the mutagen ID3 object.
+      kFields = [ ("--tt", "title"),
+                  ("--ta", "artist"),
+                  ("--tl", "album"),
+                  ("--ty", "year"),
+                  ("--tn", "trackNum"),
+                  ("--tg", "genre")
+                 ]
+
+      for (flag, field) in kFields:
+         try:
+            val = getattr(original, field)
+            # apparently there's some chance of bogus leading/trailing 
+            # double quotes?
+            val = val.strip('"')
+            cmd.extend([flag, u"{0}".format(val)])
+         except AttributeError:
+            # that metadata field is missing from this file; skip it.
+            pass
+
+      # okay, all the metadata & other args are set. Pass in the src & dest 
+      # values and make this go.       
+      cmd.extend(['--mp3input', src, dest])
+
+      try:
+         print u" ".join(cmd)
+      except UnicodeDecodeError, e:
+         print "Error because there's unicode data here... {0}".format(e)
+      subprocess.call(cmd)      
+
+      
+
+   def _DoDebug(self, srcFile, destFile):
+      ''' t/b/d -- debug only no-op version of the move/copy functions.'''
+      pass
+
+
    def HandleDir(self, path):
       # when we see a new directory, we clear the current output path...
       self.currentOutputDir = ""
@@ -317,7 +422,12 @@ class FileDestination(object):
       if destPath != self.currentOutputDir:
          # writing to a new directory. Make sure that it exists.
          self.currentOutputDir = destPath
-         self.PrepDestination()
+         try:
+            self.PrepDestination()
+         except IOError, e:
+            print "ERROR creating destination directory {0}".format(destPath)
+            return False
+      self.MusicHandler(path, os.join(destPath, destFile))
 
 
 
