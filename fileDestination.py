@@ -14,7 +14,7 @@ from mutagen.mp3 import MP3
 
 import fileSource
 
-kModes = ("copy", "move", "debug")
+kModes = ("copy", "move")
 kOnDupe = ("force", "skip", "ask")
 
 #                 0    1    2    3    4    5    6
@@ -309,9 +309,6 @@ class FileDestination(object):
       elif self.mode == "move":
          self.MusicHandler = self._DoMove
          self.OtherHandler = self._DoMove
-      elif self.mode == "debug":
-         self.MusicHandler = self._DoDebug
-         self.OltherHandler = self._DoDebug
 
 
 
@@ -378,12 +375,13 @@ class FileDestination(object):
    def _DoCopy(self, srcFile, destFile):
       ''' simple copy from src-->dest. No rate change of MP3 files. '''
       if self.debug:
-         print type(srcFile), type(destFile)
          srcFile = NormalizeFilename(srcFile)
          destFile = NormalizeFilename(destFile)
          print "COPYING\n{0}\nto\n{1}".format(srcFile, destFile)
       else:
-         shutil.copyfile(srcFile, destFile)
+         if self.ReplaceExisting(srcFile, destFile):
+
+            shutil.copyfile(srcFile, destFile)
 
    def _DoTranscode(self, srcFile, destFile):
       ''' create a new copy of the srcFile at destFile, changing its encoding
@@ -451,11 +449,6 @@ class FileDestination(object):
 
       
 
-   def _DoDebug(self, srcFile, destFile):
-      ''' t/b/d -- debug only no-op version of the move/copy functions.'''
-      pass
-
-
    def ReplaceExisting(self, srcFile, destFile):
       ''' see if we're about to overwrite a file that already exists, and if so, 
          either
@@ -472,6 +465,7 @@ class FileDestination(object):
 
       retval = True
       if os.path.exists(destFile):
+         print "destination file already exists..."
          if self.onDupe == 'force':
             retval = True
          elif self.onDupe == 'skip':
@@ -492,6 +486,10 @@ class FileDestination(object):
                   if s in ('k', 'r'):
                      retval = (s == 'r')
                      break
+            else:
+               # destination file exists, but appears to be the same
+               print "(but is identical. Skipping.)"
+               retval = False
       return retval
 
 
