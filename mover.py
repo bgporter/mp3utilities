@@ -36,7 +36,6 @@ def ErrorLog(s):
 
 if __name__ == "__main__":
    import sys
-   print sys.argv
 
 
    import argparse
@@ -101,13 +100,22 @@ if __name__ == "__main__":
    dest = fileDestination.FileDestination(unicode(args.dest), mode, args.dupe, args.rate, debug)
 
 
-   # and finally perform the move/copy:
-   for (fileType, fName) in source:
-      dest.HandleFile(fileType, fName )
-    
+   toHandle = list(source)
+   fileCount = sum(1 for item in toHandle if item[0] == fileSource.kMusic)
 
+   if fileCount:
+      print "{0} {1} files.".format("copying" if "copy" == mode else "moving", fileCount)
+      # and finally perform the move/copy:
+      mp3FileNum = 0
+      for (fileType, fName) in toHandle:
+         if fileSource.kMusic == fileType:
+            mp3FileNum += 1.0
+            print "{0}% complete".format(int((mp3FileNum / fileCount) * 100 + 0.5))
 
-   print "Done."         
+         dest.HandleFile(fileType, fName )
+      print "Done."         
+   else:
+      print "Nothing to do."
 
 
 
