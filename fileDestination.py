@@ -1,22 +1,27 @@
 
+import errno
+import hashlib
 import os
 import re
 import shutil
 import subprocess
+import unicodedata
 
 import mutagen
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 
 
+import fileSource
+
 kModes = ("copy", "move", "debug")
-kOnDupe = ("force", "ignore", "ask")
+kOnDupe = ("force", "skip", "ask")
 
 #                 0    1    2    3    4    5    6
 kVbrEquivalents = [245, 225, 190, 175, 165, 130, 115]
 
 
-kMp3FileStrFormat = '''Album Artist: {0.albumArtist}
+kMp3FileStrFormat = u'''Album Artist: {0.albumArtist}
 Track Artist: {0.trackArtist}
 Album:        {0.album}
 Title:        {0.title}
@@ -34,6 +39,10 @@ class MetadataException(Exception):
 
 class InvalidFileException(Exception):
    pass
+
+
+def NormalizeFilename(filename):
+   return unicodedata.normalize('NFC', filename).encode('utf-8')
 
 def TitleCase(s):
    words = s.split()
@@ -181,7 +190,7 @@ class Mp3File(object):
          self.title = baseName
 
    def __str__(self):
-      return kMp3FileStrFormat.format(self)
+      return kMp3FileStrFormat.format(self).encode("utf-8")
 
    @property
    def artist(self):
@@ -259,11 +268,15 @@ class Mp3File(object):
 
 
 class FileDestination(object):
-   def __init__(self, baseDir, mode="copy", onDupe="force", rate="0"):
+   def __init__(self, baseDir, mode="copy", onDupe="force", rate="0", debug=False):
       """
       >>> f = FileDestination(".", "copy", "force", "V4")
       >>> f.vbr
       True
+
+      >>> f = FileDestination(".", "copy", "force", "128")
+      >>> f.vbr
+      False
 
       """
       assert(mode in kModes)
@@ -272,9 +285,13 @@ class FileDestination(object):
       self.baseDir = baseDir
       self.mode = mode
       self.onDupe = onDupe
+
+      self.debug = debug
+
       # we need to handle VBR separately from 
       self.vbr = False
       if rate.lower().startswith('v'):
+         # VBR rates will be specified as 'V0'..'V6'. 
          self.vbr = True
          rate = rate[1:]
 
@@ -327,9 +344,10 @@ class FileDestination(object):
          was handled.
       '''
 
-      handlers = {fileSource.kDirectory   : self.HandleDir,
-                  fileSource.kMusic       : self.HandleMusic,
-                  fileSource.kOtherFile   : self.HandleOtherFile
+      handlers = { 
+                   fileSource.kDirectory   : self.HandleDir,
+                   fileSource.kMusic       : self.HandleMusic,
+                   fileSource.kOtherFile   : self.HandleOtherFile
                   }
 
       handler = handlers.get(type, None)
@@ -345,16 +363,33 @@ class FileDestination(object):
 
    def _DoMove(self, srcFile, destFile):
       ''' move the file from its current location to its new destination.'''
-      shutil.move(srcFile, destFile)
+      if self.ReplaceExisting(srcFile, destFile):
+         if self.debug:
+            print "MOVING\n{0}\nto\n{1}".format(srcFile, destFile)
+         else:
+            shutil.move(srcFile, destFile)
+      else:
+         if self.debug:
+            print "Keeping existing file {0}".format(destFile)
 
    def _DoCopy(self, srcFile, destFile):
       ''' simple copy from src-->dest. No rate change of MP3 files. '''
-      shutil.copyfile(srcFile, destFile)
+      if self.debug:
+         print type(srcFile), type(destFile)
+         srcFile = NormalizeFilename(srcFile)
+         destFile = NormalizeFilename(destFile)
+         print "COPYING\n{0}\nto\n{1}".format(srcFile, destFile)
+      else:
+         shutil.copyfile(srcFile, destFile)
 
    def _DoTranscode(self, srcFile, destFile):
       ''' create a new copy of the srcFile at destFile, changing its encoding
          bit rate as we go. Requires that LAME is installed.
       '''
+
+      if not self.ReplaceExisting(srcFile, destFile):
+         return False
+
       original = Mp3File(srcFile)
 
       # !!!TODO: compare rate of source file; if it's less than what our
@@ -362,10 +397,11 @@ class FileDestination(object):
       # transcode to lower bitrates.
 
       cmd = ['lame', '-h']
+      rateString  = "{0}".format(self.rate)
       if self.vbr:
-         cmd.extend(["-V", self.rate])
+         cmd.extend(["-V", rateString])
       else:
-         cmd.extend(["-b", self.rate])
+         cmd.extend(["-b", rateString])
 
       ## make sure that the metadata gets put in the new file correctly.
       cmd.append("--id3v2-only")
@@ -386,20 +422,29 @@ class FileDestination(object):
             # apparently there's some chance of bogus leading/trailing 
             # double quotes?
             val = val.strip('"')
-            cmd.extend([flag, u"{0}".format(val)])
+            if val:
+               cmd.extend([flag, u'{0}'.format(val)])
          except AttributeError:
             # that metadata field is missing from this file; skip it.
             pass
 
       # okay, all the metadata & other args are set. Pass in the src & dest 
       # values and make this go.       
-      cmd.extend(['--mp3input', src, dest])
+      cmd.extend(['--mp3input', srcFile, destFile])
 
-      try:
-         print u" ".join(cmd)
-      except UnicodeDecodeError, e:
-         print "Error because there's unicode data here... {0}".format(e)
-      subprocess.call(cmd)      
+      #try:
+      #   print u" ".join(cmd)
+      #except UnicodeDecodeError, e:
+      #   print "Error because there's unicode data here... {0}".format(e)
+
+      if self.debug:
+         for i, line in enumerate(cmd):
+            #print u"{0}: {1}".format(i, line.encode('utf-8'))
+            print u"{0}: {1}".format(i, line)
+         print u"\n\nTRANSCODING\n{0}\nto\n{1}\nwith command line\n{2}\n".format(
+            srcFile, destFile, u" ".join(cmd))
+      else:   
+         subprocess.call(cmd)      
 
       
 
@@ -408,12 +453,54 @@ class FileDestination(object):
       pass
 
 
+   def ReplaceExisting(self, srcFile, destFile):
+      ''' see if we're about to overwrite a file that already exists, and if so, 
+         either
+         1. overwrite it always
+         2. skip it always
+         3. ask the user what to do.
+
+         Return True if we want to overwrite the file.
+      '''
+      if self.debug:
+         print u"\nSRC = {0}".format(srcFile)
+         print destFile
+         print u"DEST = {0}".format(destFile)
+
+      retval = True
+      if os.path.exists(destFile):
+         if self.onDupe == 'force':
+            retval = True
+         elif self.onDupe == 'skip':
+            retval = False
+         else:
+            def IdFile(path, byteCount=-1):
+               md5 = hashlib.md5()
+               with open(path, "rb") as f:
+                  md5.update(f.read(byteCount))
+               return md5.digest()
+
+            # check enough of the files to see if they're the same.
+            if IdFile(srcFile, 2048) != IdFile(destFile, 2048):
+               print "file {0} already exists, and appears to be different.".format(destFile)
+               while 1:
+                  s = raw_input("[k]eep existing file or [r]eplace?")
+                  s = s.lower()[0]
+                  if s in ('k', 'r'):
+                     retval = (s == 'r')
+                     break
+      return retval
+
+
+
+
    def HandleDir(self, path):
-      # when we see a new directory, we clear the current output path...
+      ''' when we see a new directory, we clear the current output path...'''
       self.currentOutputDir = ""
       return True
 
    def HandleMusic(self, path):
+      ''' the File Source is sending us a new music file. '''
       m = Mp3File(path)
       destPath = m.DestPath()
       destFile = m.DestFile()
@@ -427,13 +514,20 @@ class FileDestination(object):
          except IOError, e:
             print "ERROR creating destination directory {0}".format(destPath)
             return False
-      self.MusicHandler(path, os.join(destPath, destFile))
+      self.MusicHandler(path, os.path.join(destPath, destFile))
 
 
 
 
    def HandleOtherFile(self, path):
       ''' the destination of this file is currentOutputDir + originalFilename '''
+      ## Create the destination file/path
+      if self.currentOutputDir:
+         fileName = os.path.basename(path)
+         destFile = os.path.join(self.currentOutputDir, fileName)
+         return self.OtherHandler(path, destFile)
+      else:
+         return False
 
 
 
