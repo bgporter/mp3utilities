@@ -123,6 +123,7 @@ class Mp3File(object):
       if ext.lower() not in (u".mp3"):
          raise InvalidFileException
 
+      self.discNumber = u""
       try:
          discNum = self.meta.discnumber
          disc, of = map(int, discNum.split('/'))
@@ -130,7 +131,7 @@ class Mp3File(object):
             self.discNumber = "(disc {0})".format(disc)
       except (ValueError, KeyError):
          # ignore the error & carry on.
-         self.discNumber = u""
+         pass
 
       # If the date is in the YYYY-MM-DD format, make sure we 
       # only use the year.
@@ -329,6 +330,7 @@ class FileDestination(object):
          os.makedirs(self.currentOutputDir)
       except OSError, e:
          if e.errno != errno.EEXIST:
+            print "ERROR creating output directory `{0}`".format(self.currentOutputDir)
             # !!! display/log the error
             # and re-raise it.
             raise
@@ -350,6 +352,7 @@ class FileDestination(object):
                    fileSource.kOtherFile   : self.HandleOtherFile
                   }
 
+      print "Handling {0}: {1}".format(type, pathToFile)
       handler = handlers.get(type, None)
       retval = False
       if handler:
