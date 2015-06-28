@@ -108,11 +108,10 @@ if __name__ == "__main__":
       # and finally perform the move/copy:
       mp3FileNum = 0
       for (fileType, fName) in toHandle:
+         dest.HandleFile(fileType, fName )
          if fileSource.kMusic == fileType:
             mp3FileNum += 1.0
             print "{0}% complete".format(int((mp3FileNum / fileCount) * 100 + 0.5))
-
-         dest.HandleFile(fileType, fName )
       print "Done."         
    else:
       print "Nothing to do."
