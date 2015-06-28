@@ -11,7 +11,7 @@ import mutagen
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 
-
+import fileHistory
 import fileSource
 
 kModes = ("copy", "move")
@@ -323,14 +323,18 @@ class FileDestination(object):
          otherwise we re-raise the exception.
       '''
 
-      try:
-         os.makedirs(self.currentOutputDir)
-      except OSError, e:
-         if e.errno != errno.EEXIST:
-            print "ERROR creating output directory `{0}`".format(self.currentOutputDir)
-            # !!! display/log the error
-            # and re-raise it.
-            raise
+      if self.debug:
+         print "CREATING output directory {0}".format(self.currentOutputDir)
+      else:
+         try:
+            os.makedirs(self.currentOutputDir)
+            self.history.Update(self.currentOutputDir)
+         except OSError, e:
+            if e.errno != errno.EEXIST:
+               print "ERROR creating output directory `{0}`".format(self.currentOutputDir)
+               # !!! display/log the error
+               # and re-raise it.
+               raise
 
 
    def HandleFile(self, type, pathToFile):
@@ -349,7 +353,7 @@ class FileDestination(object):
                    fileSource.kOtherFile   : self.HandleOtherFile
                   }
 
-      print "Handling {0}: {1}".format(type, pathToFile)
+      print "Handling {0}: {1}".format(type, pathToFile.encode("utf-8"))
       handler = handlers.get(type, None)
       retval = False
       if handler:
@@ -498,6 +502,7 @@ class FileDestination(object):
    def HandleDir(self, path):
       ''' when we see a new directory, we clear the current output path...'''
       self.currentOutputDir = ""
+      self.history = fileHistory.History(path)
       return True
 
    def HandleMusic(self, path):
