@@ -85,6 +85,27 @@ def Scrub(s):
       return Scrub(s.decode("utf-8"))
 
 
+def ArtistSort(s):
+   '''
+      Convert artist names that are in the form "The Beatles" to just "Beatles".
+      We don't bother appending a ", The"; if doesn't seem useful and just adds another
+      4 characters to things. We do protect against one unusual case, the band "The The" is 
+      kept as is. Maybe someday I'll have something by them in my collection. 
+      >>> ArtistSort(u"Weather Report")
+      u'Weather Report'
+      >>> ArtistSort(u"They Might Be Giants")
+      u'They Might Be Giants'
+      >>> ArtistSort(u"The Beatles")
+      u'Beatles'
+      >>> ArtistSort(u"The The")
+      u'The The'
+   '''
+   s = s.strip()
+   if s.lower().startswith("the "):
+      if s.lower() != "the the":
+         s = s[4:]
+   return s
+
 class Metadata(object):
    def __init__(self, id3):
       ''' id3 is probably an instance of mutagen.easyid3.EasyId3 '''
@@ -186,6 +207,11 @@ class Mp3File(object):
 
       self.trackNum = trackNum
 
+      # make sure that artists get names set in correct sort order (minus 
+      # a leading 'The', if one exists.)
+      self.albumArtist = ArtistSort(self.albumArtist)
+      self.trackArtist = ArtistSort(self.trackArtist)
+
       self.title = self.meta.title
       if not self.title:
          self.title = baseName
@@ -231,7 +257,10 @@ class Mp3File(object):
       >>> m = Mp3File('', d)
       >>> m.DestPath()
       u'Various-Artists/2011_Greatest-Hits-of-the-Naughts'
-
+      >>> d = {"artist" : ["The Beatles"], "album": ["Rubber Soul"], "date": ["1965"]}
+      >>> m = Mp3File('', d)
+      >>> m.DestPath()
+      u'Beatles/1965_Rubber-Soul'
       '''
 
       albumName = "_".join(w for w in [self.year, self.album, self.discNumber] if w)
