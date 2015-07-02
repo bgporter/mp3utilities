@@ -30,7 +30,7 @@ Renaming rules are:
 - For now, the names used are encode in UTF-8, which isn't always right, e.g., I think that the flash drive I use in the car is actually formatted such that it's expecting an ISO-8859-1 encoding, but there's also the possibility that odd characters there are actually remnants of bugs in earlier versions of this code.
 
 
-#### 'editMetadata.py'
+#### `editMetadata.py`
 
 Quick utility to walk through mp3 files in a directory tree and verify metadata settings (and make changes if needed.)
 
