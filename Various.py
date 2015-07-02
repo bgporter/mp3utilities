@@ -78,12 +78,12 @@ def Prompt(md, filePath):
 
    md.Save()
 
-def Scan(path):   
+def Scan(path, force=False):   
    for (dirpath, dirs, files) in os.walk(path):
       for f in files:
          base, ext = os.path.splitext(f)
          if ext.lower() in (u".mp3",):
-            fullPath = os.path.join(root, dirpath, f)
+            fullPath = os.path.join(path, dirpath, f)
             sys.stdout.write("{0}\r".format(fullPath))
             sys.stdout.flush()
             try:
@@ -95,7 +95,7 @@ def Scan(path):
             md = Metadata(id3)
             artist = md.artist
             performer = md.performer
-            if performer and (performer.lower() != artist.lower()):
+            if force or (performer and (performer.lower() != artist.lower())):
                path = os.path.join(dirpath, f)
                Prompt(md, path)
 
@@ -106,7 +106,8 @@ if __name__ == "__main__":
    if len(sys.argv) > 1:
       # 1st arg is the directory to look at
       path = sys.argv[1]
-else:
-   path = "."
-print "Scanning {0}".format(path)
-Scan(path)
+   else:
+      path = "."
+
+   print "Scanning {0}".format(path)
+   Scan(path)
