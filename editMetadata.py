@@ -14,15 +14,19 @@ def AlwaysValidates(attr, value):
 
 kFields = [
    # attribute, label, datatype, validation fn
-   ("performer",  "Album Artist", str, AlwaysValidates),
-   ("artist",     "Track Artist", str, AlwaysValidates),
-   ("title",      "Title",        str, AlwaysValidates),
+   ("performer",  "Album Artist", unicode, AlwaysValidates),
+   ("artist",     "Track Artist", unicode, AlwaysValidates),
+   ("title",      "Title",        unicode, AlwaysValidates),
    ("tracknumber", "Track #",     int, AlwaysValidates),
    ("date",       "Year",         int, AlwaysValidates),
    ("discnumber",  "Disc #",      int, AlwaysValidates),
-   ("genre",      "Genre",        str, AlwaysValidates)
+   ("genre",      "Genre",        unicode, AlwaysValidates)
 ]
 
+kRememberAttributes = ["performer", "artist", "date", "discnumber", "genre"]
+
+# use the field data above to dynamically build the format string 
+# used to display a track's metadata.
 metadataFormat = []
 for i, (attr, label, t, val) in enumerate(kFields):
    metadataFormat.append("{0}. {1:<16} {{0.{2}}}".format(i+1, label, attr))
@@ -54,14 +58,32 @@ def GetInput(prompt, datatype=str, defaultVal=None):
 
 
 class MetadataEditor(object):
-   def __init__(self, mp3file):
-      self.meta = fileDestination.Metadata(EasyID3(mp3file))
+   def __init__(self):
+      self.meta = None
+      # For fields that might recur across an album, remember the last 
+      # value entered. See kRememberAttributes above.
+      self.lastField = {}
 
-   def EditFile(self):
+
+   def Remember(self, attr, val):
+      # if this is an attribute that we're supposed to remember, 
+      # remember it.
+      if attr in kRememberAttributes:
+         self.lastField[attr] = val
+
+   def Remembered(self, attr):
+      # See if we have a human-entered value that we should have
+      # remembered for this attribute.
+      return self.lastField.get(attr, "")
+
+   def EditFile(self, mp3File):
+      self.meta = fileDestination.Metadata(EasyID3(mp3File))
       while 1:
+         print "\n"
          print metadataFormat.format(self.meta)
          choice = abs(GetInput("Enter item to edit [0 = done]: ", int, 0))
          if 0 == choice:
+            self.meta.Save()
             break
          else:
             # reset to zero-based so we can index into the list of attributes.
@@ -72,8 +94,27 @@ class MetadataEditor(object):
             except IndexError:
                continue
 
-   def EditAttribute(self, attr, label, t, val):
-      print "\n{0}\n".format(label)
+   def EditAttribute(self, attr, label, t, validate):
+      print "\n{0}\nCurrent: {1}".format(label, getattr(self.meta, attr))
+      lastVal = self.Remembered(attr)
+      if lastVal:
+         lvString = "[blank = '{0}']: ".format(lastVal)
+      else: 
+         lvString = ': '
+      promptString = "New value {0}".format(lvString)
+      newVal = GetInput(promptString, t, None)
+      if newVal or lastVal:
+         if not newVal:
+            newVal = lastVal
+         if validate(attr, newVal):
+            self.meta[attr] = newVal
+            self.Remember(attr, newVal)
+         else:
+            # if validation fails, we call ourselves recursively instead
+            # of looping. We may want to change this. 
+            self.EditAttribute(attr, label, t, val)
+
+
 
 
 
@@ -85,7 +126,12 @@ if __name__ == "__main__":
 
    fs = fileSource.FileSource(path)
 
+   editor = None
+
    for (fileType, filePath) in fs:
-      if fileType == fileSource.kMusic:
-         editor = MetadataEditor(filePath)
-         editor.EditFile()
+      if fileType == fileSource.kDirectory:
+         # create a new editor for each directory, resetting all the 
+         # remembered values.
+         editor = MetadataEditor()
+      elif fileType == fileSource.kMusic:
+         editor.EditFile(filePath)
