@@ -77,21 +77,25 @@ class MetadataEditor(object):
       return self.lastField.get(attr, "")
 
    def EditFile(self, mp3File):
+      ''' return true to process the next file, False to quit. '''
       self.meta = fileDestination.Metadata(EasyID3(mp3File))
       while 1:
          print "\n"
          print metadataFormat.format(self.meta)
-         choice = abs(GetInput("Enter item to edit [0 = done]: ", int, 0))
-         if 0 == choice:
+         choice = GetInput("Enter item to edit [0 = next, q = quit]: ", str, "0")
+         if "0" == choice:
             self.meta.Save()
-            break
+            return True
+         elif "q" == choice.lower():
+            self.meta.Save()
+            return False
          else:
             # reset to zero-based so we can index into the list of attributes.
-            choice -= 1
             try:
+               choice = int(choice) - 1
                field = kFields[choice]
                self.EditAttribute(*field)
-            except IndexError:
+            except (IndexError, ValueError):
                continue
 
    def EditAttribute(self, attr, label, t, validate):
@@ -133,5 +137,10 @@ if __name__ == "__main__":
          # create a new editor for each directory, resetting all the 
          # remembered values.
          editor = MetadataEditor()
+         print "Entering {0}".format(filePath)
       elif fileType == fileSource.kMusic:
-         editor.EditFile(filePath)
+         retval = editor.EditFile(filePath)
+         if not retval:
+            break
+
+   print "Done."
