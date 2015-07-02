@@ -14,6 +14,7 @@ def AlwaysValidates(attr, value):
 
 kFields = [
    # attribute, label, datatype, validation fn
+   ("album",      "Album",        unicode, AlwaysValidates),
    ("performer",  "Album Artist", unicode, AlwaysValidates),
    ("artist",     "Track Artist", unicode, AlwaysValidates),
    ("title",      "Title",        unicode, AlwaysValidates),
