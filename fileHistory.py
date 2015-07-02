@@ -36,9 +36,10 @@ class History(object):
       self.history = []
       srcAlbumName = os.path.split(srcPath)[1]
       srcHistory = "{0}.history".format(srcAlbumName)
+      historyPath = os.path.join(srcPath, srcHistory)
       try:
          # see if there's a history file at the source path. There may not be.
-         with open(os.path.join(srcPath, srcHistory), "rt") as f:
+         with open(historyPath, "rt") as f:
             self.history = [line.strip() for line in f]
       except IOError:
          # Nope, no history. That's okay. Leave the list blank.
