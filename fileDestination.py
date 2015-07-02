@@ -28,8 +28,8 @@ Title:        {0.title}
 Track #:      {0.trackNum}
 Year:         {0.year}
 Disc #:       {0.discNumber}
-Bitrate:      {0.bitrate}
 Genre:        {0.genre}
+Bitrate:      {0.bitrate}
 '''
 
 
@@ -88,7 +88,7 @@ def Scrub(s):
 def ArtistSort(s):
    '''
       Convert artist names that are in the form "The Beatles" to just "Beatles".
-      We don't bother appending a ", The"; if doesn't seem useful and just adds another
+      We don't bother appending a ", The"; it doesn't seem useful and just adds another
       4 characters to things. We do protect against one unusual case, the band "The The" is 
       kept as is. Maybe someday I'll have something by them in my collection. 
       >>> ArtistSort(u"Weather Report")
@@ -110,6 +110,11 @@ class Metadata(object):
    def __init__(self, id3):
       ''' id3 is probably an instance of mutagen.easyid3.EasyId3 '''
       self.data = id3
+      self.dirty = False
+
+   def __setitem__(self, key, value):
+      self.data[key] = unicode(value)
+      self.dirty = True
 
    def __getattr__(self, key):
       ''' look at the id3 metadata to get the desired value out of it. If that key
@@ -122,6 +127,17 @@ class Metadata(object):
 
       return val
 
+   def Save(self):
+      ''' Attempt to write any changes back to the file (if there is one)'''
+      if self.dirty:
+         try:
+            self.data.save()
+            self.dirty = False
+         except AttributeError:
+            # we were passed a regular dict, and cant' save...
+            pass
+
+
 
 class Mp3File(object):
    def __init__(self, pathToFile, metadata=None):
@@ -132,7 +148,7 @@ class Mp3File(object):
       self.meta = Metadata(id3)
 
       try:
-         audio = MP3()
+         audio = MP3(pathToFile)
          self.bitrate = audio.info.bitrate / 1000
       except (IOError, AttributeError):
          # fake it.
@@ -229,6 +245,9 @@ class Mp3File(object):
       else:
          return self.albumArtist
 
+
+   def Save(self):
+      self.meta.Save()
 
    def DestPath(self):
       ''' Return a new path where this file should be stored relative to however 
