@@ -30,9 +30,9 @@ kRememberAttributes = ["performer", "artist", "date", "discnumber", "genre"]
 # used to display a track's metadata.
 metadataFormat = []
 for i, (attr, label, t, val) in enumerate(kFields):
-   metadataFormat.append("{0}. {1:<16} {{0.{2}}}".format(i+1, label, attr))
+   metadataFormat.append(u"{0}. {1:<16} {{0.{2}}}".format(i+1, label, attr))
 
-metadataFormat = "\n".join(metadataFormat)
+metadataFormat = u"\n".join(metadataFormat)
 
 
 def GetInput(prompt, datatype=str, defaultVal=None):
@@ -100,7 +100,7 @@ class MetadataEditor(object):
                continue
 
    def EditAttribute(self, attr, label, t, validate):
-      print "\n{0}\nCurrent: {1}".format(label, getattr(self.meta, attr))
+      print u"\n{0}\nCurrent: {1}".format(label, getattr(self.meta, attr))
       lastVal = self.Remembered(attr)
       if lastVal:
          lvString = "[blank = '{0}']: ".format(lastVal)
