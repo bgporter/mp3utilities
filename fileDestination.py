@@ -194,9 +194,12 @@ class Mp3File(object):
       self.albumArtist = artist
       self.compilation = False
       if performer.lower() != artist.lower():
-         self.compilation = True
-         self.albumArtist = performer
-         self.trackArtist = artist
+         #if performer.lower().startswith("various artists"):
+         if performer and artist:
+            # treat this as a compilation.
+            self.compilation = True
+            self.albumArtist = performer
+            self.trackArtist = artist
 
          elif performer:
             # we know performer but not artist
