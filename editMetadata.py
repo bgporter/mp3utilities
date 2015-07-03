@@ -24,7 +24,7 @@ kFields = [
    ("genre",      "Genre",        unicode, AlwaysValidates)
 ]
 
-kRememberAttributes = ["performer", "artist", "date", "discnumber", "genre"]
+kRememberAttributes = ["album", "performer", "artist", "date", "discnumber", "genre"]
 
 # use the field data above to dynamically build the format string 
 # used to display a track's metadata.
@@ -59,8 +59,10 @@ def GetInput(prompt, datatype=str, defaultVal=None):
 
 
 class MetadataEditor(object):
-   def __init__(self):
+   def __init__(self, args):
       self.meta = None
+      self.args = args
+
       # For fields that might recur across an album, remember the last 
       # value entered. See kRememberAttributes above.
       self.lastField = {}
@@ -80,6 +82,12 @@ class MetadataEditor(object):
    def EditFile(self, mp3File):
       ''' return true to process the next file, False to quit. '''
       self.meta = fileDestination.Metadata(EasyID3(mp3File))
+
+      # if self.args is not empty, pass along any settings that we 
+      # were given from the command line:
+      for attr, val in self.args.items():
+         self.meta[attr] = val
+
       while 1:
          print "\n"
          print metadataFormat.format(self.meta)
@@ -100,7 +108,7 @@ class MetadataEditor(object):
                continue
 
    def EditAttribute(self, attr, label, t, validate):
-      print u"\n{0}\nCurrent: {1}".format(label, getattr(self.meta, attr))
+      print "\n{0}\nCurrent: {1}".format(label, getattr(self.meta, attr))
       lastVal = self.Remembered(attr)
       if lastVal:
          lvString = "[blank = '{0}']: ".format(lastVal)
@@ -124,12 +132,32 @@ class MetadataEditor(object):
 
 
 if __name__ == "__main__":
-   if len(sys.argv) > 1:
-      path = sys.argv[1]
-   else:
-      path = '.'
+   import argparse
+   import os
 
-   fs = fileSource.FileSource(path)
+   parser = argparse.ArgumentParser(description='Edit MP3 file metadata')
+   parser.add_argument("--src", action="store", nargs="?", default = os.getcwd(), 
+      help="Directory containing MP3 files to edit.")
+   parser.add_argument("--album", action="store", nargs="?", help="Album name to set")
+   parser.add_argument("--performer", action="store", nargs="?", help="Album artist name to set")
+   parser.add_argument("--artist", action="store", nargs="?", help="Track artist name to set")
+   parser.add_argument("--date", action="store", nargs="?", help="Album year to set")
+   parser.add_argument("--discnumber", action="store", nargs="?", help="Album year to set")
+   parser.add_argument("--genre", action="store", nargs="?", help="Genre to set")
+
+
+
+   args = parser.parse_args()
+
+   args = vars(args)
+
+   path = args.pop('src')
+
+   # get rid of any items in the dict with a value of None.
+   for (k, v) in args.items():
+      if v is None:
+         args.pop(k)
+      fs = fileSource.FileSource(path)
 
    editor = None
 
@@ -137,7 +165,7 @@ if __name__ == "__main__":
       if fileType == fileSource.kDirectory:
          # create a new editor for each directory, resetting all the 
          # remembered values.
-         editor = MetadataEditor()
+         editor = MetadataEditor(args)
          print "Entering {0}".format(filePath)
       elif fileType == fileSource.kMusic:
          retval = editor.EditFile(filePath)
