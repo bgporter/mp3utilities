@@ -64,7 +64,7 @@ def Scrub(s):
    #s = s.lower()
 
    kIllegals = u":/\\?<>,!"
-   # get rid of quotes but don't leave space.
+   # get rid of quotes/dots but don't leave space.
    kIllegal2 = u"\"'."
    try:
       for c in kIllegals:
@@ -587,7 +587,7 @@ class FileDestination(object):
       ## if this is a history file, ignore it. 
       if fileHistory.IsHistoryFile(path):
          return True
-         
+
       ## Create the destination file/path
       if self.currentOutputDir:
          fileName = os.path.basename(path)
