@@ -63,10 +63,15 @@ def Scrub(s):
    '''
    #s = s.lower()
 
-   kIllegals = u":/\\?<>,!\""
+   kIllegals = u":/\\?<>,!"
+   # get rid of quotes but don't leave space.
+   kIllegal2 = u"\"'."
    try:
       for c in kIllegals:
          s = s.replace(c, u" ")
+      for c in kIllegal2:
+         s = s.replace(c, u"")
+
       #  replace square brackets with parens -- they freak out other 
       #  code of mine that uses glob to process file names.
       s = s.replace('[', '(')
@@ -79,6 +84,9 @@ def Scrub(s):
       s = s.replace(u' ', u'-')
       # replace multiple dashes with a single dash
       s = re.sub("-+", u'-', s)
+      # Always get rid of any trailing dots -- this causes problems when 
+      # used as a directory name. 
+      s = s.rstrip('.')
 
       return s
    except UnicodeDecodeError, e:
