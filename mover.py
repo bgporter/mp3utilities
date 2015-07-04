@@ -79,6 +79,7 @@ if __name__ == "__main__":
    # directories.
    if args.input:
       print "INPUT: %s" % args.input
+      others = []
       try:
          with open(args.input, "r") as f:
             for dirName in f:
