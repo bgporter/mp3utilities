@@ -1,4 +1,15 @@
 
+
+import os
+
+kHistoryFileExt = ".history"
+
+def MakeHistoryFilename(f):
+   return "{0}{1}".format(f, kHistoryFileExt)
+
+def IsHistoryFile(f):
+   return kHistoryFileExt == os.path.splitext(f)[1] 
+
 def HandleHistory(srcPath, targetPath):
    ''' if there's a history file in our src, we add a new line in the 
       copy at the destination after copying it there. Otherwise, we create
@@ -10,7 +21,7 @@ def HandleHistory(srcPath, targetPath):
    print "HandleHistory src = {0} dest = {1}".format(srcPath, targetPath)
    history = []
    srcAlbumName = os.path.split(srcPath)[1]
-   srcHistory = "{0}.history".format(srcAlbumName)
+   srcHistory = MakeHistoryFilename(srcAlbumName)
    try:
       with open(os.path.join(srcPath, srcHistory), "rt") as f:
          history = [s.strip() for s in f]
@@ -19,7 +30,7 @@ def HandleHistory(srcPath, targetPath):
       pass
 
    destAlbumName = os.path.split(targetPath)[1]
-   destHistory = "{0}.history".format(destAlbumName)
+   destHistory = MakeHistoryFilename(destAlbumName)
    with open(os.path.join(targetPath, destHistory), "wt") as f:
       history.append("{0}".format(int(time.time())))
       f.write("\n".join(history))

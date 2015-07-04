@@ -584,6 +584,10 @@ class FileDestination(object):
 
    def HandleOtherFile(self, path):
       ''' the destination of this file is currentOutputDir + originalFilename '''
+      ## if this is a history file, ignore it. 
+      if fileHistory.IsHistoryFile(path):
+         return True
+         
       ## Create the destination file/path
       if self.currentOutputDir:
          fileName = os.path.basename(path)
