@@ -34,7 +34,11 @@ Bitrate:      {0.bitrate}
 
 
 class MetadataException(Exception):
-   pass
+   def __init__(self, txt):
+      self.txt = txt
+
+   def __str__(self):
+      return self.txt
 
 
 class InvalidFileException(Exception):
@@ -150,7 +154,11 @@ class Metadata(object):
 class Mp3File(object):
    def __init__(self, pathToFile, metadata=None):
       if not metadata:
-         id3 = EasyID3(pathToFile)
+         try:
+            id3 = EasyID3(pathToFile)
+         except mutagen.id3.ID3NoHeaderError as e:
+            raise MetadataException(str(e))
+
       else:
          id3 = metadata
       self.meta = Metadata(id3)
