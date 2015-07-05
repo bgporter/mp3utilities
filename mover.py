@@ -114,8 +114,8 @@ if __name__ == "__main__":
          except fileDestination.MetadataException as e:
             print "ERROR: {0}".format(str(e))
          if fileSource.kMusic == fileType:
-            mp3FileNum += 1.0
-            print "{0}% complete".format(int((mp3FileNum / fileCount) * 100 + 0.5))
+            mp3FileNum += 1
+            print "{0:.2%}% complete".format(float(mp3FileNum) / fileCount)
       print "Done."         
    else:
       print "Nothing to do."
