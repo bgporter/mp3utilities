@@ -204,8 +204,8 @@ class Mp3File(object):
          self.discNumber = u""   
 
       performer = self.meta.performer
-
       artist = self.meta.artist
+
       self.trackArtist = u""
       self.albumArtist = artist
       self.compilation = False
