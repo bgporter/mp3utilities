@@ -2,7 +2,7 @@
 
 import os
 
-kHistoryFileExt = ".history"
+kHistoryFileExt = u".history"
 
 def MakeHistoryFilename(f):
    return u"{0}{1}".format(f, kHistoryFileExt)
@@ -48,9 +48,12 @@ class History(object):
       srcAlbumName = os.path.split(srcPath)[1]
       srcHistory = MakeHistoryFilename(srcAlbumName)
       historyPath = os.path.join(srcPath, srcHistory)
+      #print "HistoryFile = {0}".format(historyPath)
+      self.fileExists = False
       try:
          # see if there's a history file at the source path. There may not be.
          with open(historyPath, "rt") as f:
+            self.fileExists = True
             self.history = [line.strip() for line in f]
       except IOError:
          # Nope, no history. That's okay. Leave the list blank.
@@ -64,7 +67,11 @@ class History(object):
       '''
 
       destAlbumName = os.path.split(destPath)[1]
-      destHistory = MakeHistoryFilename(destAlbumName)
+      try:
+         destHistory = MakeHistoryFilename(destAlbumName)
+      except UnicodeDecodeError:
+         destHistory = MakeHistoryFilename(destAlbumName.decode("utf-8"))
+
       with open(os.path.join(destPath, destHistory), "wt") as f:
          self.history.append("{0}".format(int(time.time())))
          f.write("\n".join(self.history))
