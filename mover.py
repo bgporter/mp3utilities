@@ -29,9 +29,6 @@ def ErrorLog(s):
 
 
 
-   
-
-
 
 
 if __name__ == "__main__":
@@ -98,7 +95,8 @@ if __name__ == "__main__":
 
 
 
-   dest = fileDestination.FileDestination(unicode(args.dest), mode, args.dupe, args.rate, debug)
+   dest = fileDestination.FileDestination(unicode(args.dest), mode, args.dupe, 
+      args.rate, debug)
 
 
    toHandle = list(source)
