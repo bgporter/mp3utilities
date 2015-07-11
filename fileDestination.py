@@ -309,7 +309,7 @@ class Mp3File(object):
       ...   "date": ["2008"], "tracknumber" : ['4'], "title": ["Dr. Beauchef"]}
       >>> m = Mp3File('', d1)
       >>> m.DestFile()
-      u'04_Dr.-Beauchef.mp3'
+      u'04_Dr-Beauchef.mp3'
       >>> d = { "artist" : ["Baloney Bob"], "album" : ["Greatest Hits of the Naughts"],
       ...    "performer" : ["Various Artists"], "date": ["2011"], "title" : ["Bla Bla Bla"],
       ...    "tracknumber" : "5"}
@@ -334,7 +334,8 @@ class Mp3File(object):
 
 
 class FileDestination(object):
-   def __init__(self, baseDir, mode="copy", onDupe="force", rate="0", debug=False):
+   def __init__(self, baseDir, mode="copy", onDupe="force", rate="0", 
+         musicOnly=False, debug=False):
       """
       >>> f = FileDestination(".", "copy", "force", "V4")
       >>> f.vbr
@@ -351,7 +352,7 @@ class FileDestination(object):
       self.baseDir = baseDir
       self.mode = mode
       self.onDupe = onDupe
-
+      self.musicOnly = musicOnly
       self.debug = debug
 
       # we need to handle VBR separately from 
@@ -592,8 +593,9 @@ class FileDestination(object):
 
    def HandleOtherFile(self, path):
       ''' the destination of this file is currentOutputDir + originalFilename '''
-      ## if this is a history file, ignore it. 
-      if fileHistory.IsHistoryFile(path):
+      ## if we are ignoring 'other' files or this is a history file, ignore it
+      # by pretending that we succeeded.
+      if self.musicOnly or fileHistory.IsHistoryFile(path):
          return True
 
       ## Create the destination file/path
