@@ -624,7 +624,7 @@ class FileDestination(object):
       if not qReorganize:
          move = self.moveDate
 
-      destHistory.AddTrack(acq, move)
+      destHistory.AddTrack(destTrack, acq, move)
       destHistory.Save()
 
 
