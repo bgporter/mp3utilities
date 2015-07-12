@@ -5,14 +5,15 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import unicodedata
 
 import mutagen
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 
-import fileHistory
 import fileSource
+import trackHistory
 
 kModes = ("copy", "move")
 kOnDupe = ("force", "skip", "ask")
@@ -31,6 +32,11 @@ Disc #:       {0.discNumber}
 Genre:        {0.genre}
 Bitrate:      {0.bitrate}
 '''
+
+# Usually false. Set this true when reorganizing files or moving to a different 
+# drive -- when this is true, we use the *existing* move date in the history file
+# instead of setting it to now.
+qReorganize = True
 
 
 class MetadataException(Exception):
@@ -364,6 +370,8 @@ class FileDestination(object):
 
       self.rate = int(rate)
 
+      self.moveDate = int(time.time())
+
       self.currentOutputDir = ""
 
       if self.mode == "copy":
@@ -394,7 +402,6 @@ class FileDestination(object):
       else:
          try:
             os.makedirs(self.currentOutputDir)
-            self.history.Update(self.currentOutputDir)
          except OSError, e:
             if e.errno != errno.EEXIST:
                print "ERROR creating output directory `{0}`".format(self.currentOutputDir)
@@ -433,34 +440,34 @@ class FileDestination(object):
 
    def _DoMove(self, srcFile, destFile):
       ''' move the file from its current location to its new destination.'''
-      if self.ReplaceExisting(srcFile, destFile):
-         if self.debug:
-            print "MOVING\n{0}\nto\n{1}".format(srcFile, destFile)
-         else:
-            shutil.move(srcFile, destFile)
+      if self.debug:
+         print "MOVING\n{0}\nto\n{1}".format(srcFile, destFile)
       else:
-         if self.debug:
-            print "Keeping existing file {0}".format(destFile)
+         shutil.move(srcFile, destFile)
+      # !!! Need to account for potential exceptions here. 
+      return True
 
    def _DoCopy(self, srcFile, destFile):
       ''' simple copy from src-->dest. No rate change of MP3 files. '''
+      retval = True
       if self.debug:
          srcFile = NormalizeFilename(srcFile)
          destFile = NormalizeFilename(destFile)
          print "COPYING\n{0}\nto\n{1}".format(srcFile, destFile)
       else:
-         if self.ReplaceExisting(srcFile, destFile):
-
+         try:
             shutil.copyfile(srcFile, destFile)
+         except (Error, IOError), e:
+            print str(e)
+            retval = False
+      return retval
 
    def _DoTranscode(self, srcFile, destFile):
       ''' create a new copy of the srcFile at destFile, changing its encoding
          bit rate as we go. Requires that LAME is installed.
       '''
 
-      if not self.ReplaceExisting(srcFile, destFile):
-         return False
-
+      retval = False
       original = Mp3File(srcFile)
 
       # !!!TODO: compare rate of source file; if it's less than what our
@@ -514,8 +521,11 @@ class FileDestination(object):
             print u"{0}: {1}".format(i, line)
          print u"\n\nTRANSCODING\n{0}\nto\n{1}\nwith command line\n{2}\n".format(
             srcFile, destFile, u" ".join(cmd))
+         retval = True
       else:   
-         subprocess.call(cmd)      
+         result = subprocess.call(cmd)      
+         retval = result == 0
+      return retval
 
       
 
@@ -568,7 +578,6 @@ class FileDestination(object):
    def HandleDir(self, path):
       ''' when we see a new directory, we clear the current output path...'''
       self.currentOutputDir = ""
-      self.history = fileHistory.History(path)
       return True
 
    def HandleMusic(self, path):
@@ -577,6 +586,7 @@ class FileDestination(object):
       destPath = m.DestPath()
       destFile = m.DestFile()
 
+      retval = False
       destPath = os.path.join(self.baseDir, destPath)
       if destPath != self.currentOutputDir:
          # writing to a new directory. Make sure that it exists.
@@ -586,7 +596,36 @@ class FileDestination(object):
          except IOError, e:
             print "ERROR creating destination directory {0}".format(destPath)
             return False
-      self.MusicHandler(path, os.path.join(destPath, destFile))
+      destPath = os.path.join(destPath, destFile)
+      if self.ReplaceExisting(path, destPath):
+         # ...where MusicHandler is one of _DoCopy, _DoTranscode, _DoMove
+         if self.MusicHandler(path, destPath):
+            retval = True
+            self.UpdateHistory(path, destPath)
+      return retval
+
+
+   def UpdateHistory(self, srcFile, destFile):
+      ''' If we're moving a track from a maintained directory to a new directory, 
+         make sure that the history file at the destination is updated with the 
+         correct acq/move dates.
+      '''
+      # split out the directory and file names.
+      srcPath, srcTrack = os.path.split(srcFile)
+      destPath, destTrack = os.path.split(destFile)
+
+      # load up the history files, neither of which may actually exist!
+      srcHistory = trackHistory.History(srcPath)
+      destHistory = trackHistory.History(destPath)
+
+      # ...and update the destination history using the contents of the 
+      # source history.
+      acq, move = srcHistory.GetTrack(srcTrack)
+      if not qReorganize:
+         move = self.moveDate
+
+      destHistory.AddTrack(acq, move)
+      destHistory.Save()
 
 
 
@@ -595,7 +634,7 @@ class FileDestination(object):
       ''' the destination of this file is currentOutputDir + originalFilename '''
       ## if we are ignoring 'other' files or this is a history file, ignore it
       # by pretending that we succeeded.
-      if self.musicOnly or fileHistory.IsHistoryFile(path):
+      if self.musicOnly or trackHistory.IsHistoryFile(path):
          return True
 
       ## Create the destination file/path
