@@ -47,17 +47,21 @@ class History(object):
          history file will always be the name of its parent directory + the 
          history file extension.
       '''
-      path = path
       # we always use the last path component as our file name
-      albumName = os.path.split(path)[1]
-      filename = MakeHistoryFilename(albumName)
+      artistPath, self.albumName = os.path.split(path)
+      _, self.artistName = os.path.split(artistPath)
+      filename = MakeHistoryFilename(self.albumName)
 
       self.filePath = os.path.join(path, filename)
       self.isDirty = False
+      self.fileExists = False
+
+      self.mostRecent = None
 
       try:
          with open(self.filePath, "rt") as f:
             self.history = json.loads(f.read())
+            self.fileExists = True
       except IOError:
          # the file may not exist. That's okay. 
          self.history = {}
@@ -89,18 +93,35 @@ class History(object):
       self.history[trackFile] = [(oldAcq or acquireDate), moveDate]
       self.isDirty = True
 
-   def TracksInHistory(self, dateType, days):
+
+   def PrepRecent(self):
+      if not self.mostRecent:
+         mostRecentAcq = 0
+         mostRecentMove = 0
+         for (track, dates) in self.history.items():
+            mostRecentAcq = max(mostRecentAcq, dates[kAcqDate])
+            mostRecentMove = max(mostRecentMove, dates[kMoveDate])
+         self.mostRecent = [mostRecentAcq, mostRecentMove]
+
+   def RecentTracks(self, after, dateType=kAcqDate):
+      ''' Return a list of tracks that were qcquired/moved after the specified 
+         date stamp (in the same format that we use for our history)
+      '''
       if dateType not in (kAcqDate, kMoveDate):
          raise ValueError("datetype must be in (kAcqDate, kMoveDate)")
 
-      today = datetime.date.today()
+      self.PrepRecent()
       retval = []
 
-      for (track, dates) in self.history.items():
-         trackDate = datetime.date.fromtimestamp(dates[dateType])
-         if (today - trackDate).days <= days:
-            retval.append(track)
+      # check to see if there are any tracks in this directory that are after
+      # the requested date. If not, we won't bother looking.
+      if self.mostRecent[dateType] >= after:
+         for (track, dates) in self.history.items():
+            if dates[dateType] >= after:
+               retval.append(os.path.join(self.artistName, self.albumName, track))
+
       return retval
+
 
 
 
