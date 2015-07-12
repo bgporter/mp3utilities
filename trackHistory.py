@@ -26,6 +26,7 @@ import time
 import datetime
 
 kHistoryExtension = ".tracks"
+kOldHistoryExtension = ".history"
 
 # index into the list.
 kAcqDate, kMoveDate = (0, 1)
@@ -35,7 +36,7 @@ def MakeHistoryFilename(f):
    return u"{0}{1}".format(f, kHistoryExtension)
 
 def IsHistoryFile(f):
-   return kHistoryExtension == os.path.splitext(f)[1]
+   return os.path.splitext(f)[1] in (kHistoryExtension, kOldHistoryExtension)
 
 
 class History(object):
