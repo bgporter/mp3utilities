@@ -138,21 +138,19 @@ if __name__ == "__main__":
    for (t, p) in fs:
       if fileSource.kDirectory == t:
          try: # !!! delete this after testing...
-            history = History(p)
+            history = History(p.decode('utf-8'))
          except: 
             print "!!!! EXCEPTION LOADING HISTORY FILE !!!"
             print p
             print "!!!!"
             continue
          if history.fileExists:
-            print "dir - {0}".format(p)
             for i, cutoff in enumerate(cutoffs):
                tracks = history.RecentTracks(cutoff)
                if tracks:
                   trackLists[i].extend(tracks)
 
    for days, trackList in zip(periods, trackLists):
-      print len(trackList)
       WritePlaylist(args['dest'], days, trackList)
 
 
