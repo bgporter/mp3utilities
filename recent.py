@@ -140,6 +140,7 @@ if __name__ == "__main__":
          try: # !!! delete this after testing...
             history = History(p)
          except: 
+            print "!!!! EXCEPTION LOADING HISTORY FILE !!!"
             continue
          if history.fileExists:
             print "dir - {0}".format(p)
