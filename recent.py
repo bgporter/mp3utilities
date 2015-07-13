@@ -141,6 +141,8 @@ if __name__ == "__main__":
             history = History(p)
          except: 
             print "!!!! EXCEPTION LOADING HISTORY FILE !!!"
+            print p
+            print "!!!!"
             continue
          if history.fileExists:
             print "dir - {0}".format(p)
