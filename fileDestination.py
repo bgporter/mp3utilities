@@ -610,22 +610,23 @@ class FileDestination(object):
          make sure that the history file at the destination is updated with the 
          correct acq/move dates.
       '''
-      # split out the directory and file names.
-      srcPath, srcTrack = os.path.split(srcFile)
-      destPath, destTrack = os.path.split(destFile)
+      if not self.debug:
+         # split out the directory and file names.
+         srcPath, srcTrack = os.path.split(srcFile)
+         destPath, destTrack = os.path.split(destFile)
 
-      # load up the history files, neither of which may actually exist!
-      srcHistory = trackHistory.History(srcPath)
-      destHistory = trackHistory.History(destPath)
+         # load up the history files, neither of which may actually exist!
+         srcHistory = trackHistory.History(srcPath)
+         destHistory = trackHistory.History(destPath)
 
-      # ...and update the destination history using the contents of the 
-      # source history.
-      acq, move = srcHistory.GetTrack(srcTrack)
-      if not qReorganize:
-         move = self.moveDate
+         # ...and update the destination history using the contents of the 
+         # source history.
+         acq, move = srcHistory.GetTrack(srcTrack)
+         if not qReorganize:
+            move = self.moveDate
 
-      destHistory.AddTrack(destTrack, acq, move)
-      destHistory.Save()
+         destHistory.AddTrack(destTrack, acq, move)
+         destHistory.Save()
 
 
 
