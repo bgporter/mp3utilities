@@ -2,6 +2,7 @@
 import os
 
 kDirectory = "DIR"
+kExitDirectory = "RID"
 kMusic = "MP3"
 kOtherFile = "ETC"
 
@@ -88,6 +89,7 @@ class FileSource(object):
                # now all the MP3 files are gone, yield back whatever's left.
                for f in otherFiles:
                      yield(kOtherFile, os.path.join(sourceDir, f))
+               yield(kExitDirectory, sourceDir)
 
 
    def __iter__(self):
