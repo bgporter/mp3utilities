@@ -82,7 +82,7 @@ if __name__ == "__main__":
    for (t, p) in fs:
       if fileSource.kDirectory == t:
          try: # !!! delete this after testing...
-            history = History(p.decode('utf-8'))
+            history = History(p)
          except: 
             print "!!!! EXCEPTION LOADING HISTORY FILE !!!"
             print p
