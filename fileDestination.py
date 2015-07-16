@@ -341,7 +341,7 @@ class Mp3File(object):
 
 class FileDestination(object):
    def __init__(self, baseDir, mode="copy", onDupe="force", rate="0", 
-         musicOnly=False, debug=False):
+         musicOnly=False, cleanUp=False, debug=False):
       """
       >>> f = FileDestination(".", "copy", "force", "V4")
       >>> f.vbr
@@ -359,6 +359,7 @@ class FileDestination(object):
       self.mode = mode
       self.onDupe = onDupe
       self.musicOnly = musicOnly
+      self.cleanUp = cleanUp
       self.debug = debug
 
       # we need to handle VBR separately from 
@@ -398,7 +399,7 @@ class FileDestination(object):
       '''
 
       if self.debug:
-         print "CREATING output directory {0}".format(self.currentOutputDir)
+         print "CREATING output directory {0}".format(self.currentOutputDir).encode('utf-8')
       else:
          try:
             os.makedirs(self.currentOutputDir)
@@ -422,6 +423,7 @@ class FileDestination(object):
 
       handlers = { 
                    fileSource.kDirectory   : self.HandleDir,
+                   fileSource.kExitDirectory: self.HandleExitDir,
                    fileSource.kMusic       : self.HandleMusic,
                    fileSource.kOtherFile   : self.HandleOtherFile
                   }
@@ -580,6 +582,16 @@ class FileDestination(object):
       self.currentOutputDir = ""
       return True
 
+
+   def HandleExitDir(self, path):
+      ''' maybe clean up empty directories after we're done moving? '''
+      if self.cleanUp and ("move" == self.mode):
+         # check to see if this directory has been emptied..
+         if not os.listdir(path):
+            print "Removing empty directory {0}".format(path)
+            os.rmdir(path)
+      return True
+
    def HandleMusic(self, path):
       ''' the File Source is sending us a new music file. '''
       m = Mp3File(path)
@@ -651,3 +663,4 @@ class FileDestination(object):
 if __name__ == "__main__":
    import doctest
    doctest.testmod()
+   

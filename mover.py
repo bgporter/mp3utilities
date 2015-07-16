@@ -53,6 +53,8 @@ if __name__ == "__main__":
       default="0", help="Transcode bitrate (copy only). Use V[0..9] for VBR")
    parser.add_argument("-o", "--musiconly", action='store_true', 
       help="Only move/copy music files; skip .jpg, etc.")
+   parser.add_argument('-c', '--cleanup', action="store_true", 
+      help="Remove directories left empty after moving files")
 
 
    parser.add_argument("-i", "--input", action="store", nargs="?",
@@ -98,7 +100,7 @@ if __name__ == "__main__":
 
 
    dest = fileDestination.FileDestination(unicode(args.dest), mode, args.dupe, 
-      args.rate, args.musiconly, debug)
+      args.rate, args.musiconly, args.cleanup, debug)
 
 
    toHandle = list(source)
