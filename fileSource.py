@@ -56,7 +56,7 @@ class FileSource(object):
 
       '''
       for subdir in self.others:
-         yield os.path.join(self.base, subdir)
+         yield os.path.join(self.base, subdir.decode('utf-8'))
 
 
 

@@ -399,7 +399,7 @@ class FileDestination(object):
       '''
 
       if self.debug:
-         print "CREATING output directory {0}".format(self.currentOutputDir)
+         print "CREATING output directory {0}".format(self.currentOutputDir).encode('utf-8')
       else:
          try:
             os.makedirs(self.currentOutputDir)
@@ -663,3 +663,4 @@ class FileDestination(object):
 if __name__ == "__main__":
    import doctest
    doctest.testmod()
+   
