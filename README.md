@@ -43,6 +43,8 @@ optional arguments:
                         Move/copy/debug
   -r [RATE], --rate [RATE]
                         Transcode bitrate (copy only). Use V[0..9] for VBR
+  -o, --musiconly       Only move/copy music files; skip .jpg, etc.
+  -c, --cleanup         Remove directories left empty after moving files                        
   -i [INPUT], --input [INPUT]
                         Input file containing directores to handle (1 per
                         line, relative to `src')
