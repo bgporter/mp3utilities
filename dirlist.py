@@ -54,6 +54,6 @@ if __name__ =="__main__":
             paths.append(relative)
 
    for p in sorted(paths, key=unicode.lower):
-      print p
+      print p.encode("utf-8")
 
 
