@@ -53,7 +53,7 @@ if __name__ =="__main__":
          if 2 == len(pathComponents):
             paths.append(relative)
 
-   for p in sorted(paths, key=str.lower):
+   for p in sorted(paths, key=unicode.lower):
       print p
 
 
