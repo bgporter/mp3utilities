@@ -117,7 +117,7 @@ if __name__ == "__main__":
             print "ERROR: {0}".format(str(e))
          if fileSource.kMusic == fileType:
             mp3FileNum += 1
-            print "{0:.2%}% complete".format(float(mp3FileNum) / fileCount)
+            print "{0:.2%} complete".format(float(mp3FileNum) / fileCount)
       print "Done."         
    else:
       print "Nothing to do."
