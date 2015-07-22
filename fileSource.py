@@ -74,12 +74,18 @@ class FileSource(object):
 
             We pass in a set that collects diretories that we've processed to avoid
             accidentally visiting the same directory more than once.
+
+            `d` is the directory that we're looking at
+            `visited` is a set object that holds the full path of all the directories that 
+               we've looked at (prevent processing the same directory 2x)
          '''
          assert os.path.isdir(d)
          dirs = []
          files = []
          # notify that we're entering a directory.
          yield (kDirectory, d)
+         # ...then look at all of the items that are in this directory, sorting into 
+         # two lists -- files and directories. 
          for item in os.listdir(d):
             fullpath = os.path.join(d, item)
             if os.path.isdir(fullpath):
@@ -91,6 +97,8 @@ class FileSource(object):
 
          otherFiles = []
          files.sort()
+         # first, separate the files in this directory into MP3 files and everything else. 
+         # We'll yield back the music files first, and then everything else. 
          for f in files:
             base, ext = os.path.splitext(f)
             if ext.lower() in (u".mp3",):
@@ -104,9 +112,12 @@ class FileSource(object):
          # now spelunk into any subdiretories...
          dirs.sort()
          for sub in dirs:
+            # if this were Python 3.5+, we could instead use the cooler 
+            # `yield from` syntax here.
             for t, f in Spelunk(sub, visited):
                yield (t,f)
 
+         # let them know that we're done processing this directory.
          yield (kExitDirectory, d)
 
 
