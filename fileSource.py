@@ -66,30 +66,56 @@ class FileSource(object):
          any of them contain files, yield those files back to whoever
          called us, one at a time.
       '''
+
+      def Spelunk(d, visited):
+         ''' generator that recursively walks down into directory paths and only 
+            yields the ExitDirectory message when we're done processing all of 
+            its children.
+
+            We pass in a set that collects diretories that we've processed to avoid
+            accidentally visiting the same directory more than once.
+         '''
+         assert os.path.isdir(d)
+         dirs = []
+         files = []
+         # notify that we're entering a directory.
+         yield (kDirectory, d)
+         for item in os.listdir(d):
+            fullpath = os.path.join(d, item)
+            if os.path.isdir(fullpath):
+               if fullpath not in visited:
+                  dirs.append(fullpath)
+                  visited.add(fullpath)
+            else:
+               files.append(fullpath)
+
+         otherFiles = []
+         files.sort()
+         for f in files:
+            base, ext = os.path.splitext(f)
+            if ext.lower() in (u".mp3",):
+               yield (kMusic, f)
+            else:
+               otherFiles.append(f)
+         # we've yielded all the MP3 files, now yield back anything else.
+         for f in otherFiles:
+            yield (kOtherFile, f)
+
+         # now spelunk into any subdiretories...
+         dirs.sort()
+         for sub in dirs:
+            for t, f in Spelunk(sub, visited):
+               yield (t,f)
+
+         yield (kExitDirectory, d)
+
+
+
       visited = set()
       dirList = self.GetDirectories()
       for d in dirList:
-         # walk into the directory.
-         for (dirPath, _, files) in os.walk(d):
-            sourceDir = os.path.join(self.base, dirPath)
-            # skip any directories that we've already looked into -- 
-            # ignore accidental dupes.
-            if sourceDir not in visited:
-               visited.add(sourceDir)
-               yield(kDirectory, sourceDir)
-               otherFiles = []
-               # we yield all the mp3 files first, and collect any others 
-               # to be returned after the mp3s are complete.
-               for f in files:
-                  base, ext = os.path.splitext(f)
-                  if ext.lower() in (u".mp3",):
-                     yield(kMusic, os.path.join(sourceDir, f))
-                  else:
-                     otherFiles.append(f)
-               # now all the MP3 files are gone, yield back whatever's left.
-               for f in otherFiles:
-                     yield(kOtherFile, os.path.join(sourceDir, f))
-               yield(kExitDirectory, sourceDir)
+         for (t, f) in Spelunk(d, visited):
+            yield (t, f)
 
 
    def __iter__(self):
