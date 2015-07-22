@@ -272,6 +272,11 @@ class Mp3File(object):
    def Save(self):
       self.meta.Save()
 
+
+   def DestAlbumName(self):
+      return u"_".join(w for w in [self.year, self.album, self.discNumber] if w)
+
+
    def DestPath(self):
       ''' Return a new path where this file should be stored relative to however 
       the FileDestination that we're working with wants things to be. In general, 
@@ -305,8 +310,7 @@ class Mp3File(object):
       u'Beatles/1965_Rubber-Soul'
       '''
 
-      albumName = "_".join(w for w in [self.year, self.album, self.discNumber] if w)
-      return os.path.join(Scrub(self.albumArtist), Scrub(albumName))
+      return os.path.join(Scrub(self.albumArtist), Scrub(self.DestAlbumName()))
 
 
    def DestFile(self):
@@ -663,4 +667,3 @@ class FileDestination(object):
 if __name__ == "__main__":
    import doctest
    doctest.testmod()
-   
