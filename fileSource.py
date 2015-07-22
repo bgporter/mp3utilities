@@ -43,15 +43,15 @@ class FileSource(object):
       '''
       >>> f = FileSource('/a/b/c')
       >>> list(f.GetDirectories())
-      ['/a/b/c/']
+      [u'/a/b/c/']
 
       >>> f = FileSource('a/b', ['aa', 'bb'])
       >>> list(f.GetDirectories())
-      ['a/b/aa', 'a/b/bb']
+      [u'a/b/aa', u'a/b/bb']
 
       >>> f = FileSource('a/b', ['a  ', ' bb', 'c'])
       >>> list(f.GetDirectories())
-      ['a/b/a', 'a/b/bb', 'a/b/c']
+      [u'a/b/a', u'a/b/bb', u'a/b/c']
 
 
       '''
