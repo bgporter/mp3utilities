@@ -79,7 +79,11 @@ class FileSource(object):
             `visited` is a set object that holds the full path of all the directories that 
                we've looked at (prevent processing the same directory 2x)
          '''
-         assert os.path.isdir(d)
+         #assert os.path.isdir(d), "{0} isn't a directory!".format(d)
+         if not os.path.isdir(d):
+            print "{0} isn't a directory!".format(d).encode("utf-8")
+            assert False
+            
          dirs = []
          files = []
          # notify that we're entering a directory.
