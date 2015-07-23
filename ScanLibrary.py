@@ -22,40 +22,6 @@ import fileSource
 import fileDestination
 
 
-kMtime = "_MTIME"
-
-
-
-def SplitMp3Info(filePath):
-   '''
-   Given the path to an MP3 file that's stored in our standard artist/album/trackFile
-   hierarchy, return a tuple (artist, album, trackFile)
-
-   >>> SplitMp3Info("Artist/Album/01_File.mp3")
-   ('Artist', 'Album', '01_File.mp3')
-   >>> SplitMp3Info("foo/bar/baz/Artist/Album/02_Another-File.mp3")
-   ('Artist', 'Album', '02_Another-File.mp3')
-   '''
-   parts = filePath.split(os.sep)
-   return tuple(parts[-3:])
-
-
-def AddTrack(library, trackFile):
-   #mp3 = fileDestination.Mp3File(trackFile)
-   albumPath, f = os.path.split(trackFile)
-   st = os.stat(albumPath)
-   mTime = st.st_mtime
-
-
-   artist, album, track = SplitMp3Info(trackFile)
-
-   artistDict = library.setdefault(artist, {})
-   albumDict = artistDict.setDefault(album, {})
-   lastMtime = albumDict.get(kMtime, 0)
-   if mTime > lastMtime:
-      albumDict
-
-
 class NoFilenameError(Exception):
    pass
 
@@ -90,7 +56,7 @@ class Scanner(object):
             indent=4, separators=(',', ': ')))
 
 
-   def Scan(self):
+   def Scan(self, forceScan=False):
       source = fileSource.FileSource(self.libPath)
 
       currentArtist = None
@@ -102,17 +68,22 @@ class Scanner(object):
          _, itemName = os.path.split(f)
          if fileSource.kDirectory == t:
             if 0 == depth:
+               # top level of the hierarchy -- at this point we know nothing.
                assert currentArtist is None
                assert currentAlbum is None
             elif 1 == depth:
+               # Just entered an Artist directory. 
                assert currentArtist is None
                assert currentAlbum is None
                currentArtist = self.library.setdefault(itemName, {})
             elif 2 == depth:
+               # just entered an album directory
                assert currentArtist is not None
                assert currentAlbum is None
                currentAlbum = currentArtist.setdefault(itemName, {})
             else: 
+               # deeper? Shouldn't happen. We should handle this more elegantly
+               # than throwing an assertion error, though.
                assert False, "Hierarchy goes too deep!"
             depth += 1
             pass
@@ -124,21 +95,25 @@ class Scanner(object):
          elif fileSource.kOtherFile == t:
             pass
          elif fileSource.kExitDirectory == t:
-            if 3 == depth:
+            depth -= 1
+            if 2 == depth:
+               # leaving an album directory. 
                assert currentAlbum is not None
                assert currentArtist is not None
                currentAlbum = None
-            elif 2 == depth:
+            elif 1 == depth:
+               # leaving an artist directory.
                assert currentAlbum is None
                assert currentArtist is not None
                currentArtist = None
-            elif 1 == depth:
+            elif 0 == depth:
+               # leaving the top level directory, which should only happen as 
+               # the very last thing we do here.
                assert currentAlbum is None
                assert currentArtist is  None
             else:
                assert False, "Hierarchy error!"
 
-            depth -= 1
 
 
 
