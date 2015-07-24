@@ -40,7 +40,7 @@ import trackHistory
 
 
 kLastModified = "__mtime"
-kTrackAttributes = "albumArtist,trackArtist,album,title,trackNum,year,discNumber,genre,bitrate".split(',')
+kTrackAttributes = "artist,trackArtist,album,title,trackNum,year,discNumber,genre,bitrate,duration".split(',')
 
 class NoFilenameError(Exception):
    pass

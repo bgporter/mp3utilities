@@ -172,9 +172,17 @@ class Mp3File(object):
       try:
          audio = MP3(pathToFile)
          self.bitrate = audio.info.bitrate / 1000
+         # length is in seconds
+         length = audio.info.length
+         duration = map(int, divmod(length, 60))
+         # length is in seconrds, duration is in MM:SS time (string)
+         self.length = length
+         self.duration = u"{0[0]}:{0[1]:02}".format(duration)
       except (IOError, AttributeError):
          # fake it.
          self.bitrate = 128
+         self.length = 0
+         self.duration = u"--:--"
 
       originalFilename = os.path.basename(pathToFile)
       baseName, ext = os.path.splitext(originalFilename)
