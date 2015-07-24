@@ -40,6 +40,7 @@ import trackHistory
 
 
 kLastModified = "__mtime"
+kTrackAttributes = "albumArtist,trackArtist,album,title,trackNum,year,discNumber,genre,bitrate".split(',')
 
 class NoFilenameError(Exception):
    pass
@@ -82,11 +83,12 @@ class Scanner(object):
       currentArtist = None
       currentAlbum = None
       history = None
+      needsUpdating = False
       depth = 0
       now = time.time()
 
       for (t, f) in source:
-         print t, f
+         #print t, f
          _, itemName = os.path.split(f)
          if fileSource.kDirectory == t:
             if 0 == depth:
@@ -103,7 +105,13 @@ class Scanner(object):
                assert currentArtist is not None
                assert currentAlbum is None
                assert history is None
+               # see if this directory has been modified since the last time
+               # we looked at it.
                currentAlbum = currentArtist.setdefault(itemName, {})
+               st = os.stat(f)
+               lastModified = st.st_mtime
+               lastUpdated = currentAlbum.setdefault(kLastModified, 0)
+               needsUpdating = forceScan or (lastModified > lastUpdated)
                history = trackHistory.History(f)
             else: 
                # deeper? Shouldn't happen. We should handle this more elegantly
@@ -114,15 +122,17 @@ class Scanner(object):
          elif fileSource.kMusic == t:
             assert currentAlbum is not None
             assert history is not None
-            trackName, _ = os.path.splitext(itemName)
-            trackInfo = currentAlbum.setdefault(trackName, {})
-            if history.fileExists:
-               acq, move = history.GetTrack(itemName)
-               trackInfo['acquired'] = acq
-               trackInfo['moved'] = move
-               mp3 = fileDestination.Mp3File(f)
-               trackInfo['genre'] = mp3.genre
-
+            if needsUpdating:
+               print f
+               trackName, _ = os.path.splitext(itemName)
+               trackInfo = currentAlbum.setdefault(trackName, {})
+               if history.fileExists:
+                  acq, move = history.GetTrack(itemName)
+                  trackInfo['acquired'] = acq
+                  trackInfo['moved'] = move
+                  mp3 = fileDestination.Mp3File(f)
+                  for attr in kTrackAttributes:
+                     trackInfo[attr] = getattr(mp3, attr)
 
          elif fileSource.kOtherFile == t:
             pass
@@ -133,6 +143,10 @@ class Scanner(object):
                assert currentAlbum is not None
                assert currentArtist is not None
                assert history is not None 
+               if needsUpdating:
+                  st = os.stat(f)
+                  currentAlbum[kLastModified] = st.st_mtime
+                  needsUpdating = False
                currentAlbum = None
                history = None
             elif 1 == depth:
