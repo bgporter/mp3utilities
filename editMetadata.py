@@ -90,6 +90,8 @@ class MetadataEditor(object):
 
       while 1:
          print "\n"
+         # print as much of the path & file as we can without wrapping. 
+         print mp3File[-80:]
          print metadataFormat.format(self.meta)
          choice = GetInput("Enter item to edit [0 = next, q = quit]: ", str, "0")
          if "0" == choice:
