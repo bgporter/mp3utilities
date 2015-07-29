@@ -423,6 +423,16 @@ class FileDestination(object):
                raise
 
 
+   def MusicLocation(self, pathToSrcFile):
+      ''' return the expected location of this mp3 file based on its metadata. '''
+      m = Mp3File(pathToSrcFile)
+      destPath = m.DestPath()
+      destFile = m.DestFile()
+
+      retval = False
+      destPath = os.path.join(self.baseDir, destPath, destFile) 
+      return destPath
+
    def HandleFile(self, type, pathToFile):
       '''
          type -- one of fileSource.kDirectory, fileSource.kMusic, or 
