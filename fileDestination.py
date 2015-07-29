@@ -481,7 +481,7 @@ class FileDestination(object):
       else:
          try:
             shutil.copyfile(srcFile, destFile)
-         except (Error, IOError), e:
+         except IOError, e:
             print str(e)
             retval = False
       return retval
