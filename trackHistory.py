@@ -32,6 +32,14 @@ kOldHistoryExtension = ".history"
 kAcqDate, kMoveDate = (0, 1)
 
 
+class RemoveTrackError(exception):
+   def __init__(self, trackFile):
+      self.trackFile = trackFile
+
+   def __str__(self):
+      return "Trying to remove missing file {0}".format(self.trackFile.encode('utf-8'))
+
+
 def MakeHistoryFilename(f):
    return u"{0}{1}".format(f, kHistoryExtension)
 
@@ -67,11 +75,24 @@ class History(object):
          self.history = {}
 
    def Save(self):
+      ''' if we've been changed since we were created, we need to either:
+         1. Save the current state of the history into our backing file. 
+         2. If the user deleted the last track in this file, we instead
+            *delete* that backing file if it exists.
+      '''
       if self.isDirty:
-         with open(self.filePath, "wt") as f:
-            output = json.dumps(self.history, indent=3, separators=[',', ': '])
-            f.write(output)
-            self.isDirty = False
+         if self.history:
+            with open(self.filePath, "wt") as f:
+               output = json.dumps(self.history, indent=3, separators=[',', ': '])
+               f.write(output)
+         else:
+            # we have an empty history dict -- delete the file if it exists.
+            try:
+               os.remove(self.filePath)
+            except OSError:
+               # that file isn't there, which is probably (?) not an error?
+               pass
+         self.isDirty = False
 
    def GetTrack(self, trackFile):
       '''
@@ -93,8 +114,21 @@ class History(object):
       self.history[trackFile] = [(oldAcq or acquireDate), moveDate]
       self.isDirty = True
 
+   def RemoveTrack(self, trackFile):
+      try:
+         self.history.pop(trackFile)
+      except KeyError:
+         raise RemoveTrackError(trackFile)
+
+      self.dirty = True
+
+
+
 
    def PrepRecent(self):
+      ''' look through our contents to find the most recent acq/move amongst our 
+         contents.
+      '''
       if not self.mostRecent:
          mostRecentAcq = 0
          mostRecentMove = 0
