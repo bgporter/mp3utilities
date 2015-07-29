@@ -158,7 +158,7 @@ if __name__ == "__main__":
    print "About to copy files to {0}".format(args.dest)
 
    for f in toCopy:
-      print "Copying pinned file {0} ({1} to go...)".format(f, newFileCount)
+      print "Copying pinned file {0} ({1} to go...)".format(f.encode('utf-8'), newFileCount)
       dest.HandleMusic(f)
       newFileCount -= 1
 
@@ -170,7 +170,7 @@ if __name__ == "__main__":
       destPath = dest.MusicLocation(nextFile)
       if not os.path.exists(destPath):
          # !!! do any additional tests here, check genre, length, etc.
-         print "Copying {0} ({1} to go)".format(nextFile, newFileCount)
+         print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), newFileCount)
          dest.HandleMusic(nextFile)
          newFileCount -= 1
 
