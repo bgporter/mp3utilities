@@ -7,20 +7,6 @@ import fileDestination
 kTargetBasePath = '/media/usb1/'
 
 
-class Shuffler(object):
-   def __init__(self, source, dest, pinned=None):
-      self.source = source
-      self.dest = dest
-      self.pinned = pinned
-
-
-
-
-
-
-
-
-
 
 if __name__ == "__main__":
    import sys
@@ -39,6 +25,9 @@ if __name__ == "__main__":
    parser.add_argument("-p", "--pinned", action="store", nargs="?",
       default="", 
       help="Input file containing directores to force onto the drive (1 per line, relative to `src')" )   
+
+   # !!! TODO add option to push new files using fileSource rules, displacing 
+   # non-pinned files
 
    args = parser.parse_args()
 
@@ -170,9 +159,12 @@ if __name__ == "__main__":
       destPath = dest.MusicLocation(nextFile)
       if not os.path.exists(destPath):
          # !!! do any additional tests here, check genre, length, etc.
-         print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), newFileCount)
-         dest.HandleMusic(nextFile)
-         newFileCount -= 1
+         mp3 = fileDestination.Mp3File(nextFile)
+         if mp3.length < (9 * 60):
+            # only accept files less than 9 minutes long.
+            print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), newFileCount)
+            dest.HandleMusic(nextFile)
+            newFileCount -= 1
 
 
 
