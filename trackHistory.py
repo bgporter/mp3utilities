@@ -32,7 +32,7 @@ kOldHistoryExtension = ".history"
 kAcqDate, kMoveDate = (0, 1)
 
 
-class RemoveTrackError(exception):
+class RemoveTrackError(Exception):
    def __init__(self, trackFile):
       self.trackFile = trackFile
 
