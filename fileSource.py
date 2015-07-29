@@ -83,7 +83,7 @@ class FileSource(object):
          if not os.path.isdir(d):
             print "{0} isn't a directory!".format(d).encode("utf-8")
             assert False
-            
+
          dirs = []
          files = []
          # notify that we're entering a directory.
