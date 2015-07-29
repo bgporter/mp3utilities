@@ -51,9 +51,9 @@ if __name__ == "__main__":
 
 
    # we can store at most 5000 files for the player to read.
-   maxFiles = 300
+   maxFiles = 5000
    # each time we run, we cycle in this many new files.
-   refreshCount = 50
+   refreshCount = 500
 
 
 
