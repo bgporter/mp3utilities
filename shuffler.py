@@ -7,7 +7,8 @@ import trackHistory
 
 kTargetBasePath = '/media/usb1/'
 
-
+kGenres = "Jazz,Rock,R&B,House,Electronica.Electronic,Funk,Blues,Latin,Alternative Rock,Pop"
+kGenres = tuple(kGenres.split(','))
 
 def DeleteTrack(trackFile):
    ''' trackFile is the full path to the track we want to delete. Delete the file 
@@ -173,8 +174,9 @@ if __name__ == "__main__":
       if not os.path.exists(destPath):
          # !!! do any additional tests here, check genre, length, etc.
          mp3 = fileDestination.Mp3File(nextFile)
-         if mp3.length < (9 * 60):
+         if mp3.length < (9 * 60) and mp3.genre in kGenres:
             # only accept files less than 9 minutes long.
+            # only accept files with a genre in the accepted list.
             print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), newFileCount)
             dest.HandleMusic(nextFile)
             newFileCount -= 1
