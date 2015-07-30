@@ -27,6 +27,7 @@ def DeleteTrack(trackFile):
    # see if we need to trim empty directories
    # peel off the file name first.
    pth1, pth2 = os.path.split(destFile)
+   print "checking {0} for deletion...".format(pth1.encode('utf-8'))
    if not os.listdir(pth1):
       # empty, so delete the album directory.
       print 'Deleting empty directory {0}'.format(pth1.encode('utf-8'))
