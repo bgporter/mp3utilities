@@ -3,8 +3,21 @@ import random
 
 import fileSource
 import fileDestination
+import trackHistory
 
 kTargetBasePath = '/media/usb1/'
+
+
+
+def DeleteTrack(trackFile):
+   ''' trackFile is the full path to the track we want to delete. Delete the file 
+      (if it exists) and also remove it from a history file i fit's there. 
+   '''
+   path, track = os.path.split(trackFile)
+   history = trackHistory.History(path)
+   os.remove(trackFile)
+   history.RemoveTrack(track)
+   history.Save()
 
 
 
@@ -120,7 +133,7 @@ if __name__ == "__main__":
       for (i, destFile) in enumerate(destInventory):
          if destFile not in doNotDelete:
             print "deleting file {0}".format(destFile.encode('utf-8'))
-            os.remove(destFile)
+            DeleteTrack(destFile)
             # see if we need to trim empty directories
             # peel off the file name first.
             pth1, pth2 = os.path.split(destFile)
