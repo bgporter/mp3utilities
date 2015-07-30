@@ -79,7 +79,7 @@ class MetadataEditor(object):
       # remembered for this attribute.
       return self.lastField.get(attr, "")
 
-   def EditFile(self, mp3File):
+   def EditFile(self, mp3File, force=False):
       ''' return true to process the next file, False to quit. '''
       self.meta = fileDestination.Metadata(EasyID3(mp3File))
 
@@ -87,6 +87,10 @@ class MetadataEditor(object):
       # were given from the command line:
       for attr, val in self.args.items():
          self.meta[attr] = val
+
+      if force:
+         self.meta.Save()
+         return True
 
       while 1:
          print "\n"
@@ -146,7 +150,8 @@ if __name__ == "__main__":
    parser.add_argument("--date", action="store", nargs="?", help="Album year to set")
    parser.add_argument("--discnumber", action="store", nargs="?", help="Album year to set")
    parser.add_argument("--genre", action="store", nargs="?", help="Genre to set")
-
+   parser.add_argument('-f', '--force', action="store_true", 
+      help="Don't edit, just update all fields as passed on command line")
 
 
    args = parser.parse_args()
@@ -154,6 +159,7 @@ if __name__ == "__main__":
    args = vars(args)
 
    path = args.pop('src')
+   force = args.pop('force')
 
    # get rid of any items in the dict with a value of None.
    for (k, v) in args.items():
@@ -170,7 +176,7 @@ if __name__ == "__main__":
          editor = MetadataEditor(args)
          print "Entering {0}".format(filePath)
       elif fileType == fileSource.kMusic:
-         retval = editor.EditFile(filePath)
+         retval = editor.EditFile(filePath, force)
          if not retval:
             break
 
