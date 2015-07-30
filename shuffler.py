@@ -10,6 +10,13 @@ kTargetBasePath = '/media/usb1/'
 kGenres = "Jazz,Rock,R&B,House,Electronica.Electronic,Funk,Blues,Latin,Alternative Rock,Pop"
 kGenres = tuple(kGenres.split(','))
 
+# we can store at most 5000 files for the player to read.
+kMaxFiles = 5000
+# each time we run, we cycle in this many new files.
+kRefreshCount = 500
+
+
+
 def DeleteTrack(trackFile):
    ''' trackFile is the full path to the track we want to delete. Delete the file 
       (if it exists) and also remove it from a history file if it's there. 
@@ -70,12 +77,20 @@ if __name__ == "__main__":
       default=os.getcwd(), help="Source directory containing mp3 files")
    parser.add_argument("-d", "--dest", action="store", nargs="?",
       default=kTargetBasePath, help="Destination directory for mp3 files")
+   parser.add_argument("-r", "--rate", action="store", nargs="?",
+      default="0", help="Transcode bitrate (copy only). Use V[0..9] for VBR")
+   parser.add_argument("-m", "--max", action="store", nargs="?", type=int, 
+      default=kMaxFiles, help="Maximum number of files on the destination")
+   parser.add_argument('-n', "--new", action="store", nargs="?", type=int, 
+      default=kRefreshCount, help="Number of new files to shuffle in")
    parser.add_argument("-p", "--pinned", action="store", nargs="?",
       default="", 
       help="Input file containing directores to force onto the drive (1 per line, relative to `src')" )   
 
    # !!! TODO add option to push new files using fileSource rules, displacing 
    # non-pinned files
+    
+
 
    args = parser.parse_args()
 
@@ -87,10 +102,6 @@ if __name__ == "__main__":
       sys.exit(0)
 
 
-   # we can store at most 5000 files for the player to read.
-   maxFiles = 5000
-   # each time we run, we cycle in this many new files.
-   refreshCount = 500
 
 
 
@@ -111,7 +122,7 @@ if __name__ == "__main__":
 
    toCopy = []
    doNotDelete = []
-   dest = fileDestination.FileDestination(args.dest, "copy", "skip", "0", True)
+   dest = fileDestination.FileDestination(args.dest, "copy", "skip", args.rate, True)
 
    for f in pinnedFiles:
       destPath = dest.MusicLocation(f)
@@ -127,12 +138,12 @@ if __name__ == "__main__":
    doNotDelete = set(doNotDelete)
    destFileCount = len(destInventory)
    pinnedCopyFileCount = len(toCopy)
-   availableRoom = maxFiles - destFileCount
+   availableRoom = args.max - destFileCount
 
    assert len(pinnedFiles) == pinnedCopyFileCount + len(doNotDelete)
 
    # we want to copy at least this many files over to the dest.
-   newFileCount = pinnedCopyFileCount + refreshCount
+   newFileCount = pinnedCopyFileCount + args.new
 
    print "Pinned file count: {0}".format(pinnedCopyFileCount)
    print "Available Room: {0}".format(availableRoom)
