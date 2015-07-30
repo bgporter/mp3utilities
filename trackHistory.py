@@ -91,7 +91,7 @@ class History(object):
                os.remove(self.filePath)
             except OSError:
                # that file isn't there, which is probably (?) not an error?
-               print "***** ERROR trying to delete {0}".format(filePath.encode('utf-8'))
+               print "***** ERROR trying to delete {0}".format(self.filePath.encode('utf-8'))
          self.isDirty = False
 
    def GetTrack(self, trackFile):
@@ -120,7 +120,7 @@ class History(object):
       except KeyError:
          raise RemoveTrackError(trackFile)
 
-      self.dirty = True
+      self.isDirty = True
 
 
 
