@@ -47,7 +47,7 @@ def FilterTrack(trackFile):
 
       Returns bool, true = use this file, false = skip it.
    '''
-   bool retval = False
+   retval = False
 
    mp3 = fileDestination.Mp3File(trackFile)
    if mp3.length < (9 * 60):
