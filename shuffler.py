@@ -12,7 +12,10 @@ kGenres = tuple(kGenres.split(','))
 
 def DeleteTrack(trackFile):
    ''' trackFile is the full path to the track we want to delete. Delete the file 
-      (if it exists) and also remove it from a history file i fit's there. 
+      (if it exists) and also remove it from a history file if it's there. 
+
+      If deleting this file leaves empty album and artist directories, remove them 
+      as we exit.
    '''
    print "deleting file {0}".format(destFile.encode('utf-8'))
    path, track = os.path.split(trackFile)
@@ -21,7 +24,36 @@ def DeleteTrack(trackFile):
    history.RemoveTrack(track)
    history.Save()
 
+   # see if we need to trim empty directories
+   # peel off the file name first.
+   pth1, pth2 = os.path.split(destFile)
+   if not os.listdir(pth1):
+      # empty, so delete the album directory.
+      print 'Deleting empty directory {0}'.format(pth1.encode('utf-8'))
+      os.rmdir(pth1)
+      # see if we can also delete the artist directory
+      pth1, pth2 = os.path.split(pth1)
+      if not os.listdir(pth1):
+         # yep, the artist dir is empty. Get rid of it.
+         print 'Deleting empty directory {0}'.format(pth1.encode('utf-8'))
+         os.rmdir(pth1)
 
+
+
+def FilterTrack(trackFile):
+   ''' Decide whether this track should be copied over or not, based 
+      on criteria like duration, genre, etc. If anyone but me ever used this
+      code it should be parameterized.
+
+      Returns bool, true = use this file, false = skip it.
+   '''
+   bool retval = False
+
+   mp3 = fileDestination.Mp3File(trackFile)
+   if mp3.length < (9 * 60):
+      if mp3.genre in kGenres:
+         retval = True
+   return retval
 
 if __name__ == "__main__":
    import sys
@@ -135,20 +167,6 @@ if __name__ == "__main__":
       for (i, destFile) in enumerate(destInventory):
          if destFile not in doNotDelete:
             DeleteTrack(destFile)
-            # see if we need to trim empty directories
-            # peel off the file name first.
-            pth1, pth2 = os.path.split(destFile)
-            if not os.listdir(pth1):
-               # empty, so delete the album directory.
-               print 'Deleting empty directory {0}'.format(pth1.encode('utf-8'))
-               os.rmdir(pth1)
-               # see if we can also delete the artist directory
-               pth1, pth2 = os.path.split(pth1)
-               if not os.listdir(pth1):
-                  # yep, the artist dir is empty. Get rid of it.
-                  print 'Deleting empty directory {0}'.format(pth1.encode('utf-8'))
-                  os.rmdir(pth1)
-
             destInventory[i] = ''
             deleteCount -= 1
             if 0 == deleteCount:
@@ -172,11 +190,7 @@ if __name__ == "__main__":
       index += 1
       destPath = dest.MusicLocation(nextFile)
       if not os.path.exists(destPath):
-         # !!! do any additional tests here, check genre, length, etc.
-         mp3 = fileDestination.Mp3File(nextFile)
-         if mp3.length < (9 * 60) and mp3.genre in kGenres:
-            # only accept files less than 9 minutes long.
-            # only accept files with a genre in the accepted list.
+         if FilterTrack(nextFile):
             print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), newFileCount)
             dest.HandleMusic(nextFile)
             newFileCount -= 1
