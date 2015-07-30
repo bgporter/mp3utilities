@@ -13,6 +13,7 @@ def DeleteTrack(trackFile):
    ''' trackFile is the full path to the track we want to delete. Delete the file 
       (if it exists) and also remove it from a history file i fit's there. 
    '''
+   print "deleting file {0}".format(destFile.encode('utf-8'))
    path, track = os.path.split(trackFile)
    history = trackHistory.History(path)
    os.remove(trackFile)
@@ -132,7 +133,6 @@ if __name__ == "__main__":
       random.shuffle(destInventory)
       for (i, destFile) in enumerate(destInventory):
          if destFile not in doNotDelete:
-            print "deleting file {0}".format(destFile.encode('utf-8'))
             DeleteTrack(destFile)
             # see if we need to trim empty directories
             # peel off the file name first.
