@@ -164,7 +164,7 @@ if __name__ == "__main__":
    # we want to copy at least this many files over to the dest.
    newFileCount = pinnedCopyFileCount + args.new
 
-   print "Pinned file count: {0}".format(pinnedCopyFileCount)
+   print "Pinned/Added file count: {0}".format(pinnedCopyFileCount)
    print "Available Room: {0}".format(availableRoom)
    print "new file count: {0}".format(newFileCount)
 
