@@ -91,7 +91,7 @@ if __name__ == "__main__":
       default=kMaxFiles, help="Maximum number of files on the destination")
    parser.add_argument('-n', "--new", action="store", nargs="?", type=int, 
       default=kRefreshCount, help="Number of new files to shuffle in")
-   parser.add_argument('-a', '--add', action="store", nargs="?"
+   parser.add_argument('-a', '--add', action="store", nargs="?",
        help="path to directory holding files to add")
    parser.add_argument("-p", "--pinned", action="store", nargs="?",
       default="", 
