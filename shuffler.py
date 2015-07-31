@@ -159,7 +159,7 @@ if __name__ == "__main__":
    pinnedCopyFileCount = len(toCopy)
    availableRoom = args.max - destFileCount
 
-   assert len(pinnedFiles) == pinnedCopyFileCount + len(doNotDelete)
+   assert len(pinnedFiles) == pinnedCopyFileCount + len(doNotDelete) + len(addFiles)
 
    # we want to copy at least this many files over to the dest.
    newFileCount = pinnedCopyFileCount + args.new
