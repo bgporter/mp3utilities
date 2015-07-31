@@ -63,6 +63,14 @@ def FilterTrack(trackFile):
          retval = True
    return retval
 
+
+def GetMusicFiles(fSource):
+   ''' fSource is a fileSource.FileSource object. Returns a list of all the Mp3
+      files contained in that source.
+   '''
+   return [f for (t, f) in fSource if t == fileSource.kMusic]
+
+
 if __name__ == "__main__":
    import sys
    import argparse
@@ -83,6 +91,8 @@ if __name__ == "__main__":
       default=kMaxFiles, help="Maximum number of files on the destination")
    parser.add_argument('-n', "--new", action="store", nargs="?", type=int, 
       default=kRefreshCount, help="Number of new files to shuffle in")
+   parser.add_argument('-a', '--add', action="store", nargs="?"
+       help="path to directory holding files to add")
    parser.add_argument("-p", "--pinned", action="store", nargs="?",
       default="", 
       help="Input file containing directores to force onto the drive (1 per line, relative to `src')" )   
@@ -108,17 +118,18 @@ if __name__ == "__main__":
    # get an inventory of all the files that are already on the destination
    destSource = fileSource.FileSource(args.dest)
    print "Getting list of files at destination {0}".format(args.dest)
-   destInventory = [f for (t, f) in destSource if t == fileSource.kMusic]
+   destInventory = GetMusicFiles(destSource) 
 
    # get a list of the files that we want to have pinned on the dest
    pinnedSrc = fileSource.FileSource(args.src, args.pinned)
    print "Getting list of files to pin onto destination"
-   pinnedFiles = [f for (t,f) in pinnedSrc if t == fileSource.kMusic]
+   pinnedFiles = GetMusicFiles(pinnedSrc) 
    # get a list of all of the source files that aren't pinned.
    src = fileSource.FileSource(args.src)
    print "Getting list of all source files on {0}".format(args.src)
-   srcFiles = [f for (t,f) in src if t == fileSource.kMusic]
+   srcFiles = GetMusicFiles(src)
    
+
 
    toCopy = []
    doNotDelete = []
@@ -130,6 +141,14 @@ if __name__ == "__main__":
          toCopy.append(f)
       else:
          doNotDelete.append(destPath)
+
+   # If we're adding files that aren't pinned and aren't shuffled, get that list now.
+   addFiles = []
+   if args.add:
+      addSrc = fileSource.FileSource(args.add)
+      addFiles = GetMusicFiles(addSrc)
+
+   toCopy.extend(addFiles)
 
    # for each of the files that should be pinned to the destination, there's 
    # an entry either in toCopy (because it's not there yet) or doNotDelete
