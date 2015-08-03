@@ -97,10 +97,6 @@ if __name__ == "__main__":
       default="", 
       help="Input file containing directores to force onto the drive (1 per line, relative to `src')" )   
 
-   # !!! TODO add option to push new files using fileSource rules, displacing 
-   # non-pinned files
-    
-
 
    args = parser.parse_args()
 
@@ -110,10 +106,6 @@ if __name__ == "__main__":
       doctest.testmod()
       print "done."
       sys.exit(0)
-
-
-
-
 
    # get an inventory of all the files that are already on the destination
    destSource = fileSource.FileSource(args.dest)
@@ -136,6 +128,12 @@ if __name__ == "__main__":
    dest = fileDestination.FileDestination(args.dest, "copy", "skip", args.rate, True)
 
    for f in pinnedFiles:
+      # we add each pinned file to one of two lists -- either we need to copy 
+      # this file to the destination (list toCopy), or it's already pinned there,
+      # so we need to add it to the list of files that shouldn't be deleted
+      # (list doNotDelete). The fileDestination::MusicLocation() method
+      # figures out where the source file is supposed to live, and we check to see 
+      # if it's already there or not.  
       destPath = dest.MusicLocation(f)
       if not os.path.exists(destPath):
          toCopy.append(f)
@@ -209,7 +207,7 @@ if __name__ == "__main__":
    print "About to copy files to {0}".format(args.dest)
 
    for f in toCopy:
-      print "Copying pinned file {0} ({1} to go...)".format(f.encode('utf-8'), newFileCount)
+      print "Copying pinned/added file {0} ({1} to go...)".format(f.encode('utf-8'), newFileCount)
       dest.HandleMusic(f)
       newFileCount -= 1
 
