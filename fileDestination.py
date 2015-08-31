@@ -36,7 +36,7 @@ Bitrate:      {0.bitrate}
 # Usually false. Set this true when reorganizing files or moving to a different 
 # drive -- when this is true, we use the *existing* move date in the history file
 # instead of setting it to now.
-qReorganize = True
+qReorganize = False
 
 
 class MetadataException(Exception):
