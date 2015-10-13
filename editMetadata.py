@@ -5,6 +5,7 @@ import sys
 import fileSource
 import fileDestination
 from mutagen.easyid3 import EasyID3
+import mutagen
 
 
 ## Validator functions -- accept an attribute name and a value, returns 
@@ -81,7 +82,11 @@ class MetadataEditor(object):
 
    def EditFile(self, mp3File, force=False):
       ''' return true to process the next file, False to quit. '''
-      self.meta = fileDestination.Metadata(EasyID3(mp3File))
+      try:
+         self.meta = fileDestination.Metadata(EasyID3(mp3File))
+      except mutagen.id3.ID3NoHeaderError:
+         self.meta = mutagen.File(mp3File, easy=True)
+         self.meta.add_tags()
 
       # if self.args is not empty, pass along any settings that we 
       # were given from the command line:
