@@ -85,8 +85,9 @@ class MetadataEditor(object):
       try:
          self.meta = fileDestination.Metadata(EasyID3(mp3File))
       except mutagen.id3.ID3NoHeaderError:
-         self.meta = mutagen.File(mp3File, easy=True)
-         self.meta.add_tags()
+         f = mutagen.File(mp3File, easy=True)
+         f.add_tags()
+         self.meta = fileDestination.Metadata(f)
 
       # if self.args is not empty, pass along any settings that we 
       # were given from the command line:
