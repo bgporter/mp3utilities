@@ -668,8 +668,11 @@ class FileDestination(object):
    def HandleOtherFile(self, path):
       ''' the destination of this file is currentOutputDir + originalFilename '''
       ## if we are ignoring 'other' files or this is a history file, ignore it
-      # by pretending that we succeeded.
-      if self.musicOnly or trackHistory.IsHistoryFile(path):
+      # by pretending that we succeeded. We also refuse to move/copy the m3u 
+      # files that our ripper generates.
+      if self.musicOnly or 
+         trackHistory.IsHistoryFile(path) or 
+         path.endswith(".m3u"):
          return True
 
       ## Create the destination file/path
