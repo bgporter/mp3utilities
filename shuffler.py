@@ -113,9 +113,12 @@ if __name__ == "__main__":
    destInventory = GetMusicFiles(destSource) 
 
    # get a list of the files that we want to have pinned on the dest
-   pinnedSrc = fileSource.FileSource(args.src, args.pinned)
-   print "Getting list of files to pin onto destination"
-   pinnedFiles = GetMusicFiles(pinnedSrc) 
+   if args.pinned:
+      pinnedSrc = fileSource.FileSource(args.src, args.pinned)
+      print "Getting list of files to pin onto destination"
+      pinnedFiles = GetMusicFiles(pinnedSrc) 
+   else:
+      pinnedFiles = []
    # get a list of all of the source files that aren't pinned.
    src = fileSource.FileSource(args.src)
    print "Getting list of all source files on {0}".format(args.src)
