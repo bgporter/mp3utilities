@@ -200,7 +200,6 @@ if __name__ == "__main__":
       for destFile in deleteFiles:
          if destFile not in doNotDelete:
             DeleteTrack(destFile)
-            destInventory[i] = ''
    # okay, now we do the opposite -- we need to
    # 1. Copy up any pinned files that aren't up there yet
    # 2. Shuffle the source files and start copying files up that aren't already
@@ -224,6 +223,7 @@ if __name__ == "__main__":
       if not os.path.exists(destPath):
          if FilterTrack(nextFile):
             shuffled.append(nextFile)
+            newFileCount -= 1
 
    shuffled.sort()
    shuffleCount = len(shuffled)
