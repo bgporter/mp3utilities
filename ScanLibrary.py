@@ -45,6 +45,21 @@ kTrackAttributes = "artist,trackArtist,album,title,trackNum,year,discNumber,genr
 class NoFilenameError(Exception):
    pass
 
+
+class Recent(object):
+   def __init__(self):
+      pass
+
+   def AddRecent(self, artistDir, albumDir, trackFile, timeStamp):
+      pass
+
+   def LoadFile(self, filePath):
+      pass
+
+   def SaveFile(self, filePath=None):
+      pass
+
+
 class Scanner(object):
    def __init__(self, libPath, filePath=None):
       ''' libPath -- path to the top of the library (e.g. the directory that 
@@ -57,6 +72,8 @@ class Scanner(object):
       self.filePath = filePath
       if filePath:
          self.LoadFile(filePath)
+
+      self.recent = Recent()
 
 
    def LoadFile(self, filePath):
@@ -81,7 +98,9 @@ class Scanner(object):
       source = fileSource.FileSource(self.libPath)
 
       currentArtist = None
+      artistName = ''
       currentAlbum = None
+      albumName = ''
       history = None
       needsUpdating = False
       depth = 0
@@ -100,6 +119,7 @@ class Scanner(object):
                assert currentArtist is None
                assert currentAlbum is None
                currentArtist = self.library.setdefault(itemName, {})
+               artistName = itemName
             elif 2 == depth:
                # just entered an album directory
                assert currentArtist is not None
@@ -108,6 +128,7 @@ class Scanner(object):
                # see if this directory has been modified since the last time
                # we looked at it.
                currentAlbum = currentArtist.setdefault(itemName, {})
+               albumName = itemName
                st = os.stat(f)
                lastModified = st.st_mtime
                lastUpdated = currentAlbum.setdefault(kLastModified, 0)
@@ -130,6 +151,7 @@ class Scanner(object):
                   acq, move = history.GetTrack(itemName)
                   trackInfo['acquired'] = acq
                   trackInfo['moved'] = move
+                  self.recent.AddRecent(artistName, albumName, trackName, acq)
                   mp3 = fileDestination.Mp3File(f)
                   for attr in kTrackAttributes:
                      trackInfo[attr] = getattr(mp3, attr)
