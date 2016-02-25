@@ -227,7 +227,7 @@ if __name__ == "__main__":
 
    shuffled.sort()
    shuffleCount = len(shuffled)
-   for (i, nextFile) in shuffled.enumerate():
+   for (i, nextFile) in enumerate(shuffled):
 
       print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), shuffleCount-i)
       dest.HandleMusic(nextFile)
