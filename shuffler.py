@@ -195,13 +195,12 @@ if __name__ == "__main__":
    # that aren't protected by being pinned.
    if deleteCount > 0:
       random.shuffle(destInventory)
-      for (i, destFile) in enumerate(destInventory):
+      deleteFiles = destInventory[:deleteCount]
+      deleteFiles.sort()
+      for destFile in deleteFiles:
          if destFile not in doNotDelete:
             DeleteTrack(destFile)
             destInventory[i] = ''
-            deleteCount -= 1
-            if 0 == deleteCount:
-               break
    # okay, now we do the opposite -- we need to
    # 1. Copy up any pinned files that aren't up there yet
    # 2. Shuffle the source files and start copying files up that aren't already
@@ -209,6 +208,7 @@ if __name__ == "__main__":
 
    print "About to copy files to {0}".format(args.dest)
 
+   toCopy.sort()
    for f in toCopy:
       print "Copying pinned/added file {0} ({1} to go...)".format(f.encode('utf-8'), newFileCount)
       dest.HandleMusic(f)
@@ -216,15 +216,21 @@ if __name__ == "__main__":
 
    random.shuffle(srcFiles)
    index = 0
+   shuffled = []
    while newFileCount > 0:
       nextFile = srcFiles[index]
       index += 1
       destPath = dest.MusicLocation(nextFile)
       if not os.path.exists(destPath):
          if FilterTrack(nextFile):
-            print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), newFileCount)
-            dest.HandleMusic(nextFile)
-            newFileCount -= 1
+            shuffled.append(nextFile)
+
+   shuffled.sort()
+   shuffleCount = len(shuffled)
+   for (i, nextFile) in shuffled.enumerate():
+
+      print "Copying {0} ({1} to go)".format(nextFile.encode('utf-8'), shuffleCount-i)
+      dest.HandleMusic(nextFile)
 
 
 
