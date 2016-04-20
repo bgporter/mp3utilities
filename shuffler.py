@@ -7,7 +7,7 @@ import trackHistory
 
 kTargetBasePath = '/media/usb1/'
 
-kGenres = "Jazz,Rock,R&B,House,Electronica.Electronic,Funk,Blues,Latin,Alternative Rock,Pop"
+kGenres = "Jazz,Rock,R&B,House,Electronica,Electronic,Funk,Blues,Latin,Alternative Rock,Pop"
 kGenres = tuple(kGenres.split(','))
 
 # we can store at most 5000 files for the player to read.
