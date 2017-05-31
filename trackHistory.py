@@ -70,7 +70,7 @@ class History(object):
          with open(self.filePath, "rt") as f:
             self.history = json.loads(f.read())
             self.fileExists = True
-      except IOError:
+      except (IOError, ValueError):
          # the file may not exist. That's okay. 
          self.history = {}
 
