@@ -28,8 +28,11 @@ def DeleteTrack(trackFile):
    path, track = os.path.split(trackFile)
    history = trackHistory.History(path)
    os.remove(trackFile)
-   history.RemoveTrack(track)
-   history.Save()
+   try:
+      history.RemoveTrack(track)
+      history.Save()
+   except trackHistory.RemoveTrackError:
+      print "ERROR deleting track {0}".format(track.encode('utf-8'))
 
    # see if we need to trim empty directories
    # peel off the file name first.
